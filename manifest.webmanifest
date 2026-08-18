@@ -1,0 +1,10 @@
+{
+  "name": "FitTrack",
+  "short_name": "FitTrack",
+  "description": "Personal fitness tracking for strength and cycling.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0b0d10",
+  "theme_color": "#0b0d10",
+  "icons": []
+}
