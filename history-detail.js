@@ -5,6 +5,8 @@
   const toast = window.fitTrackShowToast;
   if (!supabase || !state) return;
 
+  window.fitTrackHistoryDetailOpen = false;
+
   function formatDuration(seconds) {
     if (seconds == null) return '—';
     return `${Math.max(1, Math.round(seconds / 60))} min`;
@@ -30,7 +32,7 @@
   }
 
   async function makeHistoryClickable() {
-    if (state.route !== 'history') return;
+    if (state.route !== 'history' || window.fitTrackHistoryDetailOpen) return;
     const user = await getUser();
     if (!user) return;
 
@@ -46,7 +48,7 @@
     if (!card) return;
 
     card.innerHTML = `<div class="list">${data.map(row => `
-      <button class="list-row" data-workout-detail="${row.id}" style="width:100%;text-align:left;color:inherit;cursor:pointer">
+      <button type="button" class="list-row" data-workout-detail="${row.id}" style="width:100%;text-align:left;color:inherit;cursor:pointer">
         <div>
           <div class="list-row-title">${esc(row.workout_name)}</div>
           <div class="list-row-meta">${new Date(row.completed_at).toLocaleDateString(undefined,{day:'numeric',month:'short'})} · ${formatDuration(row.duration_seconds)} · ${row.completed_sets} sets</div>
@@ -56,8 +58,14 @@
   }
 
   async function openDetail(id) {
+    if (window.fitTrackHistoryDetailOpen) return;
+    window.fitTrackHistoryDetailOpen = true;
+
     const user = await getUser();
-    if (!user) return;
+    if (!user) {
+      window.fitTrackHistoryDetailOpen = false;
+      return;
+    }
 
     const { data, error } = await supabase
       .from('completed_workouts')
@@ -67,6 +75,7 @@
       .single();
 
     if (error || !data) {
+      window.fitTrackHistoryDetailOpen = false;
       toast?.('Could not open workout');
       return;
     }
@@ -78,7 +87,7 @@
         <h1 class="page-title">${esc(data.workout_name)}</h1>
         <p class="page-copy">${formatDuration(data.duration_seconds)} · ${data.completed_sets} completed sets · ${Number(data.total_volume_kg || 0).toLocaleString()} kg total volume</p>
       </div>
-      <button class="ghost-btn" data-back-history style="margin-bottom:14px">← Back to History</button>
+      <button type="button" class="ghost-btn" data-back-history style="margin-bottom:14px">← Back to History</button>
       <div class="workout-shell">
         ${exercises.map(ex => `
           <section class="exercise-session">
@@ -101,21 +110,31 @@
 
   document.addEventListener('click', (event) => {
     const row = event.target.closest('[data-workout-detail]');
-    if (row) openDetail(row.dataset.workoutDetail);
+    if (row) {
+      event.preventDefault();
+      openDetail(row.dataset.workoutDetail);
+      return;
+    }
 
     const back = event.target.closest('[data-back-history]');
     if (back) {
+      window.fitTrackHistoryDetailOpen = false;
       state.route = 'history';
       window.fitTrackRender?.();
       setTimeout(makeHistoryClickable, 80);
+      return;
     }
 
-    const nav = event.target.closest('[data-route="history"]');
-    if (nav) setTimeout(makeHistoryClickable, 100);
+    const nav = event.target.closest('[data-route]');
+    if (nav) {
+      window.fitTrackHistoryDetailOpen = false;
+      if (nav.dataset.route === 'history') setTimeout(makeHistoryClickable, 100);
+    }
   });
 
+  // Only prepare clickable rows while the list view is visible.
   const observer = new MutationObserver(() => {
-    if (state.route === 'history' && !document.querySelector('[data-workout-detail]')) {
+    if (state.route === 'history' && !window.fitTrackHistoryDetailOpen && !document.querySelector('[data-workout-detail]')) {
       setTimeout(makeHistoryClickable, 80);
     }
   });
