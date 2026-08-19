@@ -20,4 +20,7 @@ function renderHistory(){return `${pageHead('Activity log','History','Your compl
 function renderProgress(){return `${pageHead('Analytics','Progress','Track strength and cycling progress over time.')}<section class="grid grid-2"><article class="card"><div class="card-title">Bench Press</div><div class="metric" style="margin-top:20px">75 kg</div><div class="metric-label">current top set</div></article><article class="card"><div class="card-title">August distance</div><div class="metric" style="margin-top:20px">126.4 km</div><div class="metric-label">cycling</div></article></section>`}
 function render(){if(state.route==='home')app.innerHTML=renderHome();else if(state.route==='workout')app.innerHTML=renderWorkout();else if(state.route==='ride')app.innerHTML=renderRide();else if(state.route==='history')app.innerHTML=renderHistory();else app.innerHTML=renderProgress();wireEvents()}
 function wireEvents(){document.querySelectorAll('[data-route]').forEach(x=>x.onclick=()=>navigate(x.dataset.route));document.querySelectorAll('[data-tab]').forEach(x=>x.onclick=()=>{state.activeTab=x.dataset.tab;render()});document.querySelectorAll('[data-action="start-workout"]').forEach(x=>x.onclick=()=>navigate('workout'));document.querySelectorAll('[data-action="toggle-set"]').forEach(x=>x.onclick=()=>{let s=state.workout.exercises[+x.dataset.ex].sets[+x.dataset.set];s.done=!s.done;render()});}
+window.fitTrackState=state;
+window.fitTrackRender=render;
+window.fitTrackShowToast=showToast;
 render();
