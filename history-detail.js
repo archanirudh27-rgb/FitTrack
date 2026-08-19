@@ -1,19 +1,23 @@
-// FitTrack completed-workout drill-down. Kept separate from core navigation.
+// FitTrack completed-workout history + drill-down.
+// This is the single owner of the History screen to avoid redraw races.
 (function () {
   const supabase = window.fitTrackSupabase;
   const state = window.fitTrackState;
   const toast = window.fitTrackShowToast;
   if (!supabase || !state) return;
 
-  window.fitTrackHistoryDetailOpen = false;
+  let viewMode = 'list';
+  let requestToken = 0;
 
   function formatDuration(seconds) {
     if (seconds == null) return '—';
     return `${Math.max(1, Math.round(seconds / 60))} min`;
   }
 
-  function formatDate(value) {
-    return new Date(value).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
+  function formatDate(value, long = false) {
+    return new Date(value).toLocaleDateString(undefined, long
+      ? { day: 'numeric', month: 'long', year: 'numeric' }
+      : { day: 'numeric', month: 'short' });
   }
 
   function esc(value) {
@@ -31,10 +35,11 @@
     return data.user || null;
   }
 
-  async function makeHistoryClickable() {
-    if (state.route !== 'history' || window.fitTrackHistoryDetailOpen) return;
+  async function renderHistoryList() {
+    if (state.route !== 'history' || viewMode !== 'list') return;
+    const myToken = ++requestToken;
     const user = await getUser();
-    if (!user) return;
+    if (!user || myToken !== requestToken || state.route !== 'history' || viewMode !== 'list') return;
 
     const { data, error } = await supabase
       .from('completed_workouts')
@@ -43,27 +48,43 @@
       .order('completed_at', { ascending: false })
       .limit(50);
 
-    if (error || !data?.length) return;
-    const card = document.querySelector('#app .card');
-    if (!card) return;
+    if (myToken !== requestToken || state.route !== 'history' || viewMode !== 'list') return;
+    if (error) {
+      console.warn('FitTrack history load failed:', error.message);
+      return;
+    }
 
-    card.innerHTML = `<div class="list">${data.map(row => `
-      <button type="button" class="list-row" data-workout-detail="${row.id}" style="width:100%;text-align:left;color:inherit;cursor:pointer">
-        <div>
-          <div class="list-row-title">${esc(row.workout_name)}</div>
-          <div class="list-row-meta">${new Date(row.completed_at).toLocaleDateString(undefined,{day:'numeric',month:'short'})} · ${formatDuration(row.duration_seconds)} · ${row.completed_sets} sets</div>
+    const app = document.getElementById('app');
+    if (!app) return;
+
+    app.innerHTML = `
+      <div class="page-head">
+        <div class="eyebrow">Activity log</div>
+        <h1 class="page-title">History</h1>
+        <p class="page-copy">Your completed workouts and rides.</p>
+      </div>
+      <section class="card">
+        <div class="list">
+          ${!data?.length ? `
+            <div class="list-row"><div><div class="list-row-title">No completed workouts yet</div><div class="list-row-meta">Finish a workout and it will appear here.</div></div></div>
+          ` : data.map(row => `
+            <button type="button" class="list-row" data-workout-detail="${row.id}" style="width:100%;text-align:left;color:inherit;cursor:pointer">
+              <div>
+                <div class="list-row-title">${esc(row.workout_name)}</div>
+                <div class="list-row-meta">${formatDate(row.completed_at)} · ${formatDuration(row.duration_seconds)} · ${row.completed_sets} sets</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px"><strong>${Number(row.total_volume_kg || 0).toLocaleString()} kg</strong><span class="accent">→</span></div>
+            </button>`).join('')}
         </div>
-        <div style="display:flex;align-items:center;gap:10px"><strong>${Number(row.total_volume_kg || 0).toLocaleString()} kg</strong><span class="accent">→</span></div>
-      </button>`).join('')}</div>`;
+      </section>`;
   }
 
   async function openDetail(id) {
-    if (window.fitTrackHistoryDetailOpen) return;
-    window.fitTrackHistoryDetailOpen = true;
-
+    viewMode = 'detail';
+    const myToken = ++requestToken;
     const user = await getUser();
-    if (!user) {
-      window.fitTrackHistoryDetailOpen = false;
+    if (!user || myToken !== requestToken || viewMode !== 'detail') {
+      if (!user) viewMode = 'list';
       return;
     }
 
@@ -74,16 +95,18 @@
       .eq('id', id)
       .single();
 
+    if (myToken !== requestToken || viewMode !== 'detail') return;
     if (error || !data) {
-      window.fitTrackHistoryDetailOpen = false;
+      viewMode = 'list';
       toast?.('Could not open workout');
+      renderHistoryList();
       return;
     }
 
     const exercises = (data.workout_state?.exercises || []).filter(ex => ex.sets?.some(set => set.done));
     document.getElementById('app').innerHTML = `
       <div class="page-head">
-        <div class="eyebrow">Completed workout · ${formatDate(data.completed_at)}</div>
+        <div class="eyebrow">Completed workout · ${formatDate(data.completed_at, true)}</div>
         <h1 class="page-title">${esc(data.workout_name)}</h1>
         <p class="page-copy">${formatDuration(data.duration_seconds)} · ${data.completed_sets} completed sets · ${Number(data.total_volume_kg || 0).toLocaleString()} kg total volume</p>
       </div>
@@ -112,31 +135,35 @@
     const row = event.target.closest('[data-workout-detail]');
     if (row) {
       event.preventDefault();
+      event.stopPropagation();
       openDetail(row.dataset.workoutDetail);
       return;
     }
 
     const back = event.target.closest('[data-back-history]');
     if (back) {
-      window.fitTrackHistoryDetailOpen = false;
-      state.route = 'history';
-      window.fitTrackRender?.();
-      setTimeout(makeHistoryClickable, 80);
+      event.preventDefault();
+      viewMode = 'list';
+      ++requestToken;
+      renderHistoryList();
       return;
     }
 
     const nav = event.target.closest('[data-route]');
     if (nav) {
-      window.fitTrackHistoryDetailOpen = false;
-      if (nav.dataset.route === 'history') setTimeout(makeHistoryClickable, 100);
+      ++requestToken;
+      viewMode = 'list';
+      if (nav.dataset.route === 'history') {
+        setTimeout(renderHistoryList, 0);
+      }
     }
-  });
+  }, true);
 
-  // Only prepare clickable rows while the list view is visible.
+  // Core app renders its own placeholder History view first; replace it once per navigation.
   const observer = new MutationObserver(() => {
-    if (state.route === 'history' && !window.fitTrackHistoryDetailOpen && !document.querySelector('[data-workout-detail]')) {
-      setTimeout(makeHistoryClickable, 80);
+    if (state.route === 'history' && viewMode === 'list' && !document.querySelector('[data-workout-detail]')) {
+      renderHistoryList();
     }
   });
-  observer.observe(document.getElementById('app'), { childList: true, subtree: true });
+  observer.observe(document.getElementById('app'), { childList: true });
 })();
