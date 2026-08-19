@@ -1,5 +1,5 @@
-// FitTrack completed workout saving and history.
-// Kept separate from core app navigation/rendering for stability.
+// FitTrack completed workout saving only.
+// History rendering is intentionally handled by history-detail.js so there is one owner of that screen.
 (function () {
   const supabase = window.fitTrackSupabase;
   const state = window.fitTrackState;
@@ -90,54 +90,7 @@
 
     setTimeout(() => {
       document.querySelector('[data-route="history"]')?.click();
-      setTimeout(loadHistory, 50);
     }, 250);
-  }
-
-  function formatDuration(seconds) {
-    if (seconds == null) return '—';
-    const mins = Math.max(1, Math.round(seconds / 60));
-    return `${mins} min`;
-  }
-
-  function formatDate(value) {
-    const d = new Date(value);
-    return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
-  }
-
-  async function loadHistory() {
-    if (state.route !== 'history' || window.fitTrackHistoryDetailOpen) return;
-    const user = await getUser();
-    if (!user) return;
-
-    const { data, error } = await supabase
-      .from('completed_workouts')
-      .select('id, workout_name, total_volume_kg, completed_sets, duration_seconds, completed_at')
-      .eq('user_id', user.id)
-      .order('completed_at', { ascending: false })
-      .limit(50);
-
-    if (error) {
-      console.warn('FitTrack history load failed:', error.message);
-      return;
-    }
-
-    const card = document.querySelector('#app .card');
-    if (!card) return;
-
-    if (!data.length) {
-      card.innerHTML = '<div class="list"><div class="list-row"><div><div class="list-row-title">No completed workouts yet</div><div class="list-row-meta">Finish a workout and it will appear here.</div></div></div></div>';
-      return;
-    }
-
-    card.innerHTML = `<div class="list">${data.map(row => `
-      <div class="list-row">
-        <div>
-          <div class="list-row-title">${row.workout_name}</div>
-          <div class="list-row-meta">${formatDate(row.completed_at)} · ${formatDuration(row.duration_seconds)} · ${row.completed_sets} sets</div>
-        </div>
-        <strong>${Number(row.total_volume_kg || 0).toLocaleString()} kg</strong>
-      </div>`).join('')}</div>`;
   }
 
   document.addEventListener('click', (event) => {
@@ -149,20 +102,10 @@
 
     const finish = event.target.closest('[data-action="finish-real-workout"]');
     if (finish) finishWorkout(finish);
-
-    const historyNav = event.target.closest('[data-route="history"]');
-    if (historyNav) {
-      window.fitTrackHistoryDetailOpen = false;
-      setTimeout(loadHistory, 30);
-    }
   });
 
-  // Only used to keep the Finish Workout button present after core re-renders.
-  // History is loaded from explicit navigation events to avoid redraw loops.
-  const observer = new MutationObserver(() => {
-    injectFinishButton();
-  });
+  // Keep only the Finish Workout button in sync with core renders.
+  const observer = new MutationObserver(() => injectFinishButton());
   observer.observe(document.getElementById('app'), { childList: true, subtree: true });
-
   injectFinishButton();
 })();
