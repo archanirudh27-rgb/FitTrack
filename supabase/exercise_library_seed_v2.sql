@@ -6,8 +6,13 @@ insert into exercises (name, slug, primary_muscle_group_id, secondary_muscles, e
 values ('Barbell Bench Press','barbell-bench-press',(select id from muscle_groups where name='Chest'),array['Triceps','Shoulders'],'Barbell','Intermediate','Lie on a flat bench, lower the bar with control to mid-chest, then press up while keeping shoulder blades set.',true)
 on conflict (slug) do nothing;
 
-insert into exercises values (gen_random_uuid(),'Incline Dumbbell Press','incline-dumbbell-press',(select id from muscle_groups where name='Chest'),array['Triceps','Shoulders'],'Dumbbells','Intermediate','Set the bench to a moderate incline, lower dumbbells beside the upper chest, then press upward without losing shoulder position.',null,null,null,null,true,now(),now()) on conflict (slug) do nothing;
-insert into exercises values (gen_random_uuid(),'Cable Crossover','cable-crossover',(select id from muscle_groups where name='Chest'),array['Shoulders'],'Cable','Beginner','Keep a slight bend in the elbows and bring the handles together in front of the chest under control.',null,null,null,null,true,now(),now()) on conflict (slug) do nothing;
+insert into exercises (name, slug, primary_muscle_group_id, secondary_muscles, equipment, difficulty, instructions, is_system)
+values ('Incline Dumbbell Press','incline-dumbbell-press',(select id from muscle_groups where name='Chest'),array['Triceps','Shoulders'],'Dumbbells','Intermediate','Set the bench to a moderate incline, lower dumbbells beside the upper chest, then press upward without losing shoulder position.',true)
+on conflict (slug) do nothing;
+
+insert into exercises (name, slug, primary_muscle_group_id, secondary_muscles, equipment, difficulty, instructions, is_system)
+values ('Cable Crossover','cable-crossover',(select id from muscle_groups where name='Chest'),array['Shoulders'],'Cable','Beginner','Keep a slight bend in the elbows and bring the handles together in front of the chest under control.',true)
+on conflict (slug) do nothing;
 
 insert into exercises (name, slug, primary_muscle_group_id, secondary_muscles, equipment, difficulty, instructions, is_system)
 values ('Lat Pulldown','lat-pulldown',(select id from muscle_groups where name='Back'),array['Biceps'],'Cable','Beginner','Pull the bar toward the upper chest while keeping the torso stable and shoulders away from the ears.',true) on conflict (slug) do nothing;
