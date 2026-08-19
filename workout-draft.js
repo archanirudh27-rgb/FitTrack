@@ -37,11 +37,11 @@
     }
   }
 
-  async function saveDraft() {
+  async function saveDraft(message = 'Set saved') {
     const user = await getUser();
     if (!user) {
       toast?.('Sign in to save this workout');
-      return;
+      return false;
     }
 
     const { error } = await supabase
@@ -54,18 +54,22 @@
 
     if (error) {
       console.warn('FitTrack draft save failed:', error.message);
-      toast?.('Could not save set');
-      return;
+      toast?.('Could not save workout');
+      return false;
     }
 
-    toast?.('Set saved');
+    if (message) toast?.(message);
+    return true;
   }
 
   document.addEventListener('click', (event) => {
     const button = event.target.closest('[data-action="toggle-set"]');
     if (!button) return;
-    setTimeout(saveDraft, 0);
+    setTimeout(() => saveDraft('Set saved'), 0);
   });
+
+  window.fitTrackSaveDraft = saveDraft;
+  window.fitTrackLoadDraft = loadDraft;
 
   // Load once after auth has had a chance to initialise.
   setTimeout(loadDraft, 800);
