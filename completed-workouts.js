@@ -106,7 +106,7 @@
   }
 
   async function loadHistory() {
-    if (state.route !== 'history') return;
+    if (state.route !== 'history' || window.fitTrackHistoryDetailOpen) return;
     const user = await getUser();
     if (!user) return;
 
@@ -151,12 +151,16 @@
     if (finish) finishWorkout(finish);
 
     const historyNav = event.target.closest('[data-route="history"]');
-    if (historyNav) setTimeout(loadHistory, 30);
+    if (historyNav) {
+      window.fitTrackHistoryDetailOpen = false;
+      setTimeout(loadHistory, 30);
+    }
   });
 
+  // Only used to keep the Finish Workout button present after core re-renders.
+  // History is loaded from explicit navigation events to avoid redraw loops.
   const observer = new MutationObserver(() => {
     injectFinishButton();
-    if (state.route === 'history') loadHistory();
   });
   observer.observe(document.getElementById('app'), { childList: true, subtree: true });
 
