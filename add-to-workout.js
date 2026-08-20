@@ -72,7 +72,7 @@
       <div class="page-head">
         <div class="eyebrow">Add to workout</div>
         <h1 class="page-title">${esc(exercise.name)}</h1>
-        <p class="page-copy">Choose an existing workout or create a new one, then set the planned sets and reps.</p>
+        <p class="page-copy">Choose an existing workout or create a new one, then set the planned sets, reps, weight and rest time. You can still change weight and reps during the live session.</p>
       </div>
 
       <section class="card" style="margin-bottom:14px">
@@ -92,10 +92,12 @@
         <div class="section-title">Plan this exercise</div>
         <div class="grid grid-2">
           <label><div class="card-subtitle">Sets</div><input id="fitPlannedSets" class="auth-input" type="number" min="1" max="10" value="3" style="width:100%;margin-top:6px" /></label>
-          <label><div class="card-subtitle">Rest (sec)</div><input id="fitRestSeconds" class="auth-input" type="number" min="15" max="600" step="15" value="90" style="width:100%;margin-top:6px" /></label>
+          <label><div class="card-subtitle">Target weight (kg)</div><input id="fitTargetWeight" class="auth-input" type="number" min="0" max="1000" step="0.5" placeholder="Optional" style="width:100%;margin-top:6px" /></label>
           <label><div class="card-subtitle">Reps min</div><input id="fitRepsMin" class="auth-input" type="number" min="1" max="100" value="8" style="width:100%;margin-top:6px" /></label>
           <label><div class="card-subtitle">Reps max</div><input id="fitRepsMax" class="auth-input" type="number" min="1" max="100" value="12" style="width:100%;margin-top:6px" /></label>
+          <label><div class="card-subtitle">Rest (sec)</div><input id="fitRestSeconds" class="auth-input" type="number" min="15" max="600" step="15" value="90" style="width:100%;margin-top:6px" /></label>
         </div>
+        <p class="card-subtitle" style="margin-top:12px">Target weight is optional. Leave it blank for bodyweight exercises or if you prefer to decide the load during the session.</p>
       </section>
 
       <div class="grid grid-2">
@@ -173,6 +175,8 @@
     const repsMin = Math.max(1, numeric(document.getElementById('fitRepsMin')?.value, 8));
     const repsMax = Math.max(repsMin, numeric(document.getElementById('fitRepsMax')?.value, 12));
     const restSeconds = Math.max(15, numeric(document.getElementById('fitRestSeconds')?.value, 90));
+    const rawWeight = document.getElementById('fitTargetWeight')?.value?.trim();
+    const targetWeight = rawWeight === '' ? null : Math.max(0, numeric(rawWeight, 0));
 
     const { error: insertError } = await supabase
       .from('workout_template_exercises')
@@ -183,6 +187,7 @@
         planned_sets: plannedSets,
         target_reps_min: repsMin,
         target_reps_max: repsMax,
+        target_weight_kg: targetWeight,
         rest_seconds: restSeconds
       });
 
