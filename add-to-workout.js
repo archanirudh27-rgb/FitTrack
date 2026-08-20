@@ -203,6 +203,7 @@
     toast?.('Exercise added to workout');
     state.activeTab = 'Planner';
     window.fitTrackRender?.();
+    window.dispatchEvent(new CustomEvent('fittrack:planner-refresh'));
   }
 
   document.addEventListener('click', (event) => {
