@@ -3,12 +3,36 @@
   const supabase = window.fitTrackSupabase;
   const state = window.fitTrackState;
   const toast = window.fitTrackShowToast;
-  if (!supabase || !state) return;
+  const app = document.getElementById('app');
+  if (!supabase || !state || !app) return;
 
   async function getUser() {
     const { data, error } = await supabase.auth.getUser();
     if (error) return null;
     return data.user || null;
+  }
+
+  function addLoadButtons() {
+    app.querySelectorAll('[data-fit-schedule-delete]').forEach(removeButton => {
+      const row = removeButton.closest('.meta-row');
+      if (!row || row.querySelector('[data-fit-session-load]')) return;
+
+      const plannedSessionId = removeButton.dataset.fitScheduleDelete;
+      const actionWrap = document.createElement('div');
+      actionWrap.style.display = 'flex';
+      actionWrap.style.gap = '8px';
+      actionWrap.style.alignItems = 'center';
+
+      const loadButton = document.createElement('button');
+      loadButton.type = 'button';
+      loadButton.className = 'secondary-btn';
+      loadButton.dataset.fitSessionLoad = plannedSessionId;
+      loadButton.textContent = 'Load to Session';
+
+      removeButton.parentNode.insertBefore(actionWrap, removeButton);
+      actionWrap.appendChild(loadButton);
+      actionWrap.appendChild(removeButton);
+    });
   }
 
   async function loadScheduledSession(plannedSessionId, button) {
@@ -93,4 +117,8 @@
     event.stopPropagation();
     loadScheduledSession(load.dataset.fitSessionLoad, load);
   });
+
+  const observer = new MutationObserver(() => setTimeout(addLoadButtons, 0));
+  observer.observe(app, { childList: true, subtree: true });
+  setTimeout(addLoadButtons, 100);
 })();
