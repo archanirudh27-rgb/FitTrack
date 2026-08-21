@@ -5,7 +5,8 @@
     back:'assets/muscle-groups/back.png',
     shoulders:'assets/muscle-groups/shoulders.png',
     biceps:'assets/muscle-groups/biceps.png',
-    triceps:'assets/muscle-groups/triceps.png'
+    triceps:'assets/muscle-groups/triceps.png',
+    forearms:'assets/muscle-groups/forearms.png'
   };
 
   function img(src,label){return `<img class="library-group-image" src="${src}" alt="${label} muscles highlighted" loading="lazy">`}
