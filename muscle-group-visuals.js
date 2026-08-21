@@ -10,7 +10,8 @@
     quads:'assets/muscle-groups/quads.png',
     hamstrings:'assets/muscle-groups/hamstrings.png',
     glutes:'assets/muscle-groups/glutes.png',
-    calves:'assets/muscle-groups/calves.png'
+    calves:'assets/muscle-groups/calves.png',
+    abs:'assets/muscle-groups/abs.png'
   };
   function img(src,label){return `<img class="library-group-image" src="${src}" alt="${label} muscles highlighted" loading="lazy">`}
   function apply(){
