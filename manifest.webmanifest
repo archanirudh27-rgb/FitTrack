@@ -1,10 +1,20 @@
 {
   "name": "FitTrack",
   "short_name": "FitTrack",
-  "description": "Personal fitness tracking for strength and cycling.",
+  "description": "Personal fitness tracking for strength, walking, running and cycling.",
   "start_url": "./",
+  "scope": "./",
   "display": "standalone",
+  "orientation": "portrait-primary",
   "background_color": "#0b0d10",
   "theme_color": "#0b0d10",
-  "icons": []
+  "categories": ["fitness", "health", "lifestyle"],
+  "icons": [
+    {
+      "src": "icons/fittrack-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
 }
