@@ -131,7 +131,7 @@
       const exercise = state.workout?.exercises?.[i];
       if (!exercise) continue;
       const prev = await previousForExercise(exercise.name);
-      if (!isSession() || !card.isConnected) return;
+      if (!isSession() || !card.isConnected || card.querySelector('[data-previous-performance]')) continue;
       const note = document.createElement('div');
       note.dataset.previousPerformance = '1';
       note.className = 'card-subtitle';
@@ -184,11 +184,13 @@
     }
   }, true);
 
+  // Only watch direct replacements of the main app view. Timer text updates happen
+  // deeper in the DOM and must not retrigger the Session enhancer every 500 ms.
   const observer = new MutationObserver(() => {
     if (enhanceBusy) return;
     enhanceBusy = true;
     setTimeout(() => { enhanceBusy = false; enhance(); }, 30);
   });
-  observer.observe(app, { childList:true, subtree:true });
+  observer.observe(app, { childList:true, subtree:false });
   setTimeout(enhance, 100);
 })();
