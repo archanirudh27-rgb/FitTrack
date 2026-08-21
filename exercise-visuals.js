@@ -8,6 +8,7 @@
     'dumbbell bench press':'dumbbell-bench-press.png',
     'incline dumbbell press':'incline-dumbbell-press.png',
     'dumbbell fly':'dumbbell-fly.png',
+    'pec deck fly':'pec-deck-fly.png',
     'cable fly':'cable-fly.png',
     'low-to-high cable fly':'low-to-high-cable-fly.png',
     'cable crossover':'cable-crossover.png',
@@ -18,7 +19,6 @@
   const visuals=window.fitTrackExerciseVisuals=window.fitTrackExerciseVisuals||{};
   Object.entries(files).forEach(([name,file])=>{
     const src=base+file;
-    // Each production PNG already contains both START and FINISH positions.
     visuals[name]={start:src,finish:src,card:src};
   });
   window.fitTrackGetExerciseVisual=function(exerciseName,phase){
