@@ -40,9 +40,9 @@
       <div class="section-title">Start an activity</div>
       <p class="page-copy" style="margin-top:6px">Start directly from Home. Location permission and the timer begin only after you tap Start.</p>
       <div class="grid grid-3" style="margin-top:12px">
-        <button class="secondary-btn" data-home-start-activity="walk">Start Walk</button>
-        <button class="secondary-btn" data-home-start-activity="run">Start Run</button>
-        <button class="secondary-btn" data-home-start-activity="cycle">Start Cycle</button>
+        <button class="primary-btn" data-home-start-activity="walk">Start Walk</button>
+        <button class="primary-btn" data-home-start-activity="run">Start Run</button>
+        <button class="primary-btn" data-home-start-activity="cycle">Start Cycle</button>
       </div>`;
     hero.insertAdjacentElement('afterend', section);
   }
