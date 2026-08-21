@@ -11,7 +11,9 @@
     hamstrings:'assets/muscle-groups/hamstrings.png',
     glutes:'assets/muscle-groups/glutes.png',
     calves:'assets/muscle-groups/calves.png',
-    abs:'assets/muscle-groups/abs.png'
+    abs:'assets/muscle-groups/abs.png',
+    'full body':'assets/muscle-groups/full-body.png',
+    'full-body':'assets/muscle-groups/full-body.png'
   };
   function img(src,label){return `<img class="library-group-image" src="${src}" alt="${label} muscles highlighted" loading="lazy">`}
   function apply(){
