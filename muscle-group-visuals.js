@@ -6,7 +6,10 @@
     shoulders:'assets/muscle-groups/shoulders.png',
     biceps:'assets/muscle-groups/biceps.png',
     triceps:'assets/muscle-groups/triceps.png',
-    forearms:'assets/muscle-groups/forearms.png'
+    forearms:'assets/muscle-groups/forearms.png',
+    quads:'assets/muscle-groups/quads.png',
+    hamstrings:'assets/muscle-groups/hamstrings.png',
+    glutes:'assets/muscle-groups/glutes.png'
   };
 
   function img(src,label){return `<img class="library-group-image" src="${src}" alt="${label} muscles highlighted" loading="lazy">`}
@@ -16,20 +19,13 @@
       const name=String(card.dataset.libraryGroupName||'').toLowerCase().trim();
       const src=art[name];
       const target=card.querySelector('.library-group-art');
-      if(src&&target&&target.dataset.realisticArt!==src){
-        target.innerHTML=img(src,name);
-        target.dataset.realisticArt=src;
-      }
+      if(src&&target&&target.dataset.realisticArt!==src){target.innerHTML=img(src,name);target.dataset.realisticArt=src;}
     });
-
     const primary=[...document.querySelectorAll('.chip.accent')].find(el=>/^Primary\s*·/i.test(el.textContent||''));
     const name=primary?.textContent?.split('·')[1]?.trim()?.toLowerCase();
     const src=art[name];
     const target=document.querySelector('.target-muscle-art');
-    if(src&&target&&target.dataset.realisticArt!==src){
-      target.innerHTML=img(src,name);
-      target.dataset.realisticArt=src;
-    }
+    if(src&&target&&target.dataset.realisticArt!==src){target.innerHTML=img(src,name);target.dataset.realisticArt=src;}
   }
 
   const observer=new MutationObserver(apply);
