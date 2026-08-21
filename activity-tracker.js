@@ -18,13 +18,13 @@
   async function getUser(){const {data}=await supabase.auth.getUser();return data?.user||null;}
 
   function chooser(){
-    app.innerHTML=`<div class="page-head"><div class="eyebrow">Outdoor activity</div><h1 class="page-title">Start activity</h1><p class="page-copy">Choose an activity. FitTrack will use your phone GPS for distance and pace/speed.</p></div>
+    app.innerHTML=`<div class="page-head"><div class="eyebrow">Outdoor activity</div><h1 class="page-title">Start activity</h1><p class="page-copy">Choose an activity. Location permission and the timer start only after you press Start.</p></div>
     <section class="grid grid-3">
-      <button class="card" data-activity-type="walk" style="text-align:left;color:inherit;cursor:pointer"><div class="card-title">Walk</div><div class="card-subtitle">Distance · pace · calories</div></button>
-      <button class="card" data-activity-type="run" style="text-align:left;color:inherit;cursor:pointer"><div class="card-title">Run</div><div class="card-subtitle">Distance · pace · calories</div></button>
-      <button class="card" data-activity-type="cycle" style="text-align:left;color:inherit;cursor:pointer"><div class="card-title">Cycle</div><div class="card-subtitle">Distance · speed · calories</div></button>
+      <article class="card"><div class="card-title">Walk</div><div class="card-subtitle">Distance · pace · calories</div><button class="primary-btn full-btn" style="margin-top:14px" data-activity-start="walk">Start Walk</button></article>
+      <article class="card"><div class="card-title">Run</div><div class="card-subtitle">Distance · pace · calories</div><button class="primary-btn full-btn" style="margin-top:14px" data-activity-start="run">Start Run</button></article>
+      <article class="card"><div class="card-title">Cycle</div><div class="card-subtitle">Distance · speed · calories</div><button class="primary-btn full-btn" style="margin-top:14px" data-activity-start="cycle">Start Cycle</button></article>
     </section>
-    <section class="card" style="margin-top:14px"><div class="section-title">GPS note</div><p class="page-copy" style="margin-top:8px">For best results, use this outdoors with Location enabled and allow precise location when your phone asks.</p></section>`;
+    <section class="card" style="margin-top:14px"><div class="section-title">GPS note</div><p class="page-copy" style="margin-top:8px">For best results, use this outdoors with Location enabled and allow precise location when your phone asks after you press Start.</p></section>`;
   }
 
   function durationSec(){if(!activity)return 0;const now=Date.now();const activeNow=activity.status==='active'?(now-activity.segmentStartedAt):0;return Math.max(0,Math.round((activity.elapsedMs+activeNow)/1000));}
@@ -69,6 +69,14 @@
     renderLive();
   }
 
+  function openAndBegin(type){
+    state.route='ride';
+    document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.route==='ride'));
+    window.fitTrackRender?.();
+    setTimeout(()=>begin(type),0);
+  }
+  window.fitTrackStartActivity=openAndBegin;
+
   function togglePause(){if(!activity)return;if(activity.status==='active'){activity.elapsedMs+=Date.now()-activity.segmentStartedAt;activity.status='paused';}else{activity.status='active';activity.segmentStartedAt=Date.now();}renderLive();}
   function stopGps(){if(watchId!==null)navigator.geolocation.clearWatch(watchId);watchId=null;if(tickTimer)clearInterval(tickTimer);tickTimer=null;}
 
@@ -87,13 +95,13 @@
   function maybeRender(){if(!isActivityRoute())return;if(activity&&activity.status!=='finished')renderLive();else chooser();}
 
   document.addEventListener('click',e=>{
-    const type=e.target.closest('[data-activity-type]');if(type){begin(type.dataset.activityType);return;}
+    const start=e.target.closest('[data-activity-start]');if(start){begin(start.dataset.activityStart);return;}
     if(e.target.closest('[data-activity-pause]')){togglePause();return;}
     if(e.target.closest('[data-activity-finish]')){finish();return;}
     if(e.target.closest('[data-activity-done]')){chooser();return;}
     const route=e.target.closest('[data-route="ride"]');if(route)setTimeout(maybeRender,0);
   });
 
-  const observer=new MutationObserver(()=>{if(observerBusy)return;observerBusy=true;setTimeout(()=>{observerBusy=false;if(isActivityRoute()&&!app.querySelector('[data-activity-type]')&&!app.querySelector('[data-activity-pause]')&&!app.querySelector('[data-activity-done]'))maybeRender();},40);});
+  const observer=new MutationObserver(()=>{if(observerBusy)return;observerBusy=true;setTimeout(()=>{observerBusy=false;if(isActivityRoute()&&!app.querySelector('[data-activity-start]')&&!app.querySelector('[data-activity-pause]')&&!app.querySelector('[data-activity-done]'))maybeRender();},40);});
   observer.observe(app,{childList:true});
 })();
