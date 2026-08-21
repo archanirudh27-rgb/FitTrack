@@ -2,54 +2,19 @@
 (function(){
   const groups={
     chest:{base:'assets/exercises/chest/',files:{
-      'barbell bench press':'barbell-bench-press.png',
-      'incline barbell bench press':'incline-barbell-bench-press.png',
-      'decline barbell bench press':'decline-barbell-bench-press.png',
-      'dumbbell bench press':'dumbbell-bench-press.png',
-      'incline dumbbell press':'incline-dumbbell-press.png',
-      'dumbbell fly':'dumbbell-fly.png',
-      'pec deck fly':'pec-deck-fly.png',
-      'cable fly':'cable-fly.png',
-      'low-to-high cable fly':'low-to-high-cable-fly.png',
-      'cable crossover':'cable-crossover.png',
-      'machine chest press':'machine-chest-press.png',
-      'push up':'push-up.png',
-      'chest dip':'chest-dip.png'
+      'barbell bench press':'barbell-bench-press.png','incline barbell bench press':'incline-barbell-bench-press.png','decline barbell bench press':'decline-barbell-bench-press.png','dumbbell bench press':'dumbbell-bench-press.png','incline dumbbell press':'incline-dumbbell-press.png','dumbbell fly':'dumbbell-fly.png','pec deck fly':'pec-deck-fly.png','cable fly':'cable-fly.png','low-to-high cable fly':'low-to-high-cable-fly.png','cable crossover':'cable-crossover.png','machine chest press':'machine-chest-press.png','push up':'push-up.png','chest dip':'chest-dip.png'
     }},
     back:{base:'assets/exercises/back/',files:{
-      'barbell bent over row':'barbell-bent-over-row.png',
-      'pendlay row':'pendlay-row.png',
-      'one arm dumbbell row':'one-arm-dumbbell-row.png',
-      'chest supported dumbbell row':'chest-supported-dumbbell-row.png',
-      'seated cable row':'seated-cable-row.png',
-      'lat pulldown':'lat-pulldown.png',
-      'straight arm pulldown':'straight-arm-pulldown.png',
-      'pull up':'pull-up.png',
-      'chin up':'chin-up.png',
-      'machine high row':'machine-high-row.png'
+      'barbell bent over row':'barbell-bent-over-row.png','pendlay row':'pendlay-row.png','one arm dumbbell row':'one-arm-dumbbell-row.png','chest supported dumbbell row':'chest-supported-dumbbell-row.png','seated cable row':'seated-cable-row.png','lat pulldown':'lat-pulldown.png','straight arm pulldown':'straight-arm-pulldown.png','pull up':'pull-up.png','chin up':'chin-up.png','machine high row':'machine-high-row.png'
+    }},
+    shoulders:{base:'assets/exercises/shoulders/',files:{
+      'arnold press':'arnold-press.png','cable lateral raise':'cable-lateral-raise.png','dumbbell lateral raise':'dumbbell-lateral-raise.png','dumbbell shoulder press':'dumbbell-shoulder-press.png','face pull':'face-pull.png','machine shoulder press':'machine-shoulder-press.png','overhead press':'overhead-press.png','rear delt fly':'rear-delt-fly.png','seated dumbbell shoulder press':'seated-dumbbell-shoulder-press.png'
     }}
   };
-
   const visuals=window.fitTrackExerciseVisuals=window.fitTrackExerciseVisuals||{};
-  Object.values(groups).forEach(group=>{
-    Object.entries(group.files).forEach(([name,file])=>{
-      const src=group.base+file;
-      visuals[name]={start:src,finish:src,card:src};
-    });
-  });
-
-  window.fitTrackGetExerciseVisual=function(exerciseName,phase){
-    const item=visuals[String(exerciseName||'').toLowerCase().trim()];
-    return item?.[String(phase||'start').toLowerCase()]||item?.card||null;
-  };
-
+  Object.values(groups).forEach(group=>Object.entries(group.files).forEach(([name,file])=>{const src=group.base+file;visuals[name]={start:src,finish:src,card:src};}));
+  window.fitTrackGetExerciseVisual=function(exerciseName,phase){const item=visuals[String(exerciseName||'').toLowerCase().trim()];return item?.[String(phase||'start').toLowerCase()]||item?.card||null;};
   function close(){document.querySelector('.exercise-lightbox')?.remove();document.body.classList.remove('lightbox-open')}
-  window.fitTrackOpenExerciseVisual=function(src,title,phase){
-    if(!src)return;close();
-    const box=document.createElement('div');box.className='exercise-lightbox';
-    box.innerHTML=`<button class="exercise-lightbox-close" aria-label="Close image">×</button><div class="exercise-lightbox-card"><div class="exercise-lightbox-title">${String(title||'Exercise').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')}${phase?' · '+String(phase):''}</div><img src="${src}" alt="${String(title||'Exercise')} exercise demonstration"></div>`;
-    document.body.appendChild(box);document.body.classList.add('lightbox-open');
-    box.addEventListener('click',e=>{if(e.target===box||e.target.closest('.exercise-lightbox-close'))close()});
-  };
+  window.fitTrackOpenExerciseVisual=function(src,title,phase){if(!src)return;close();const box=document.createElement('div');box.className='exercise-lightbox';box.innerHTML=`<button class="exercise-lightbox-close" aria-label="Close image">×</button><div class="exercise-lightbox-card"><div class="exercise-lightbox-title">${String(title||'Exercise').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')}${phase?' · '+String(phase):''}</div><img src="${src}" alt="${String(title||'Exercise')} exercise demonstration"></div>`;document.body.appendChild(box);document.body.classList.add('lightbox-open');box.addEventListener('click',e=>{if(e.target===box||e.target.closest('.exercise-lightbox-close'))close()});};
   document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
 })();
