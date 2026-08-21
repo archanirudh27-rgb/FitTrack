@@ -1,30 +1,48 @@
 // FitTrack exercise visual registry + optional full-screen image viewer.
 (function(){
-  const base='assets/exercises/chest/';
-  const files={
-    'barbell bench press':'barbell-bench-press.png',
-    'incline barbell bench press':'incline-barbell-bench-press.png',
-    'decline barbell bench press':'decline-barbell-bench-press.png',
-    'dumbbell bench press':'dumbbell-bench-press.png',
-    'incline dumbbell press':'incline-dumbbell-press.png',
-    'dumbbell fly':'dumbbell-fly.png',
-    'pec deck fly':'pec-deck-fly.png',
-    'cable fly':'cable-fly.png',
-    'low-to-high cable fly':'low-to-high-cable-fly.png',
-    'cable crossover':'cable-crossover.png',
-    'machine chest press':'machine-chest-press.png',
-    'push up':'push-up.png',
-    'chest dip':'chest-dip.png'
+  const groups={
+    chest:{base:'assets/exercises/chest/',files:{
+      'barbell bench press':'barbell-bench-press.png',
+      'incline barbell bench press':'incline-barbell-bench-press.png',
+      'decline barbell bench press':'decline-barbell-bench-press.png',
+      'dumbbell bench press':'dumbbell-bench-press.png',
+      'incline dumbbell press':'incline-dumbbell-press.png',
+      'dumbbell fly':'dumbbell-fly.png',
+      'pec deck fly':'pec-deck-fly.png',
+      'cable fly':'cable-fly.png',
+      'low-to-high cable fly':'low-to-high-cable-fly.png',
+      'cable crossover':'cable-crossover.png',
+      'machine chest press':'machine-chest-press.png',
+      'push up':'push-up.png',
+      'chest dip':'chest-dip.png'
+    }},
+    back:{base:'assets/exercises/back/',files:{
+      'barbell bent over row':'barbell-bent-over-row.png',
+      'pendlay row':'pendlay-row.png',
+      'one arm dumbbell row':'one-arm-dumbbell-row.png',
+      'chest supported dumbbell row':'chest-supported-dumbbell-row.png',
+      'seated cable row':'seated-cable-row.png',
+      'lat pulldown':'lat-pulldown.png',
+      'straight arm pulldown':'straight-arm-pulldown.png',
+      'pull up':'pull-up.png',
+      'chin up':'chin-up.png',
+      'machine high row':'machine-high-row.png'
+    }}
   };
+
   const visuals=window.fitTrackExerciseVisuals=window.fitTrackExerciseVisuals||{};
-  Object.entries(files).forEach(([name,file])=>{
-    const src=base+file;
-    visuals[name]={start:src,finish:src,card:src};
+  Object.values(groups).forEach(group=>{
+    Object.entries(group.files).forEach(([name,file])=>{
+      const src=group.base+file;
+      visuals[name]={start:src,finish:src,card:src};
+    });
   });
+
   window.fitTrackGetExerciseVisual=function(exerciseName,phase){
     const item=visuals[String(exerciseName||'').toLowerCase().trim()];
     return item?.[String(phase||'start').toLowerCase()]||item?.card||null;
   };
+
   function close(){document.querySelector('.exercise-lightbox')?.remove();document.body.classList.remove('lightbox-open')}
   window.fitTrackOpenExerciseVisual=function(src,title,phase){
     if(!src)return;close();
