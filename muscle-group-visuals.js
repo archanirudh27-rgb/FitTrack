@@ -2,7 +2,9 @@
 (function(){
   const art={
     chest:'assets/muscle-groups/chest.png',
-    back:'assets/muscle-groups/back.png'
+    back:'assets/muscle-groups/back.png',
+    shoulders:'assets/muscle-groups/shoulders.png',
+    biceps:'assets/muscle-groups/biceps.png'
   };
 
   function img(src,label){return `<img class="library-group-image" src="${src}" alt="${label} muscles highlighted" loading="lazy">`}
