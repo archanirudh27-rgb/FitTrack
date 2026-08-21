@@ -1,7 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="FitTrack">
+  <defs>
+    <linearGradient id="orange" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ff8a2a"/><stop offset="1" stop-color="#e85b12"/></linearGradient>
+    <linearGradient id="silver" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#ffffff"/><stop offset="1" stop-color="#c9cdd3"/></linearGradient>
+  </defs>
   <rect width="512" height="512" rx="112" fill="#0b0d10"/>
-  <circle cx="256" cy="256" r="176" fill="#15181d"/>
-  <path d="M154 295c34-99 89-149 165-149 55 0 91 30 110 75" fill="none" stroke="#ff6a00" stroke-width="42" stroke-linecap="round"/>
-  <path d="M137 332h238" fill="none" stroke="#f5f7fa" stroke-width="34" stroke-linecap="round"/>
-  <path d="M183 249h82" fill="none" stroke="#f5f7fa" stroke-width="28" stroke-linecap="round"/>
+  <rect x="18" y="18" width="476" height="476" rx="96" fill="none" stroke="#ffffff" stroke-opacity=".13" stroke-width="4"/>
+  <!-- Interlocking F / T monogram: clean, fast and compact for an app icon. -->
+  <path d="M116 148c0-25 20-45 45-45h239l-35 55H190c-10 0-18 8-18 18v30h160l-35 55H172v143h-56V148z" fill="url(#silver)"/>
+  <path d="M104 244h279l-35 57h-92l-58 108h-67l58-108h-120l35-57z" fill="url(#orange)"/>
+  <path d="M256 301h92l-35 55h-87l30-55z" fill="#ff7a1a" opacity=".95"/>
 </svg>
