@@ -36,7 +36,7 @@
       hero=`<section class="card hero-card"><div><div class="eyebrow">Today · Planner</div><h2 class="page-title home-hero-title">No workout scheduled</h2><p class="page-copy">Plan a workout for today, or start an activity below.</p></div><button class="primary-btn home-primary-action" data-fit-home-planner>Open Planner →</button></section>`;
     }
 
-    app.innerHTML=`<div class="page-head"><h1 class="page-title">${greeting()}, Anirudh</h1><p class="page-copy">Your next session is ready. Keep the focus on consistency and clean progression.</p></div><div class="home-datetime" data-home-datetime="1">${clockMarkup()}</div>${hero}${quickActivities()}`;
+    app.innerHTML=`<div class="page-head"><h1 class="page-title home-greeting">${greeting()}, Anirudh</h1><p class="page-copy">Your next session is ready. Keep the focus on consistency and clean progression.</p></div><div class="home-datetime" data-home-datetime="1">${clockMarkup()}</div>${hero}${quickActivities()}`;
     app.style.visibility='visible';
     app.style.opacity='1';
     startClock();
