@@ -1,4 +1,4 @@
-// FitTrack Home: today's real scheduled workout + quick activity starts.
+// FitTrack Home: today's real scheduled workout + compact quick activity starts.
 (function () {
   const supabase = window.fitTrackSupabase;
   const app = document.getElementById('app');
@@ -33,16 +33,26 @@
     const hero = app.querySelector('.hero-card');
     if (!hero) return;
     const section = document.createElement('section');
-    section.className = 'card';
+    section.className = 'card home-activity-card';
     section.dataset.homeQuickActivities = '1';
-    section.style.marginTop = '14px';
     section.innerHTML = `
-      <div class="section-title">Start an activity</div>
-      <p class="page-copy" style="margin-top:6px">Start directly from Home. Location permission and the timer begin only after you tap Start.</p>
-      <div class="grid grid-3" style="margin-top:12px">
-        <button class="primary-btn" data-home-start-activity="walk">Start Walk</button>
-        <button class="primary-btn" data-home-start-activity="run">Start Run</button>
-        <button class="primary-btn" data-home-start-activity="cycle">Start Cycle</button>
+      <div class="home-section-head">
+        <div>
+          <div class="section-title">Outdoor activity</div>
+          <div class="card-title home-section-title">Start something else</div>
+        </div>
+        <span class="home-section-hint">GPS starts after tap</span>
+      </div>
+      <div class="home-quick-actions">
+        <button class="home-quick-action" data-home-start-activity="walk" aria-label="Start Walk">
+          <span class="home-quick-icon">W</span><span>Walk</span>
+        </button>
+        <button class="home-quick-action" data-home-start-activity="run" aria-label="Start Run">
+          <span class="home-quick-icon">R</span><span>Run</span>
+        </button>
+        <button class="home-quick-action" data-home-start-activity="cycle" aria-label="Start Cycle">
+          <span class="home-quick-icon">C</span><span>Cycle</span>
+        </button>
       </div>`;
     hero.insertAdjacentElement('afterend', section);
   }
@@ -68,7 +78,7 @@
     if (!hero) return;
 
     if (!planned) {
-      hero.innerHTML = `<div><div class="eyebrow">Today · Planner</div><h2 class="page-title" style="font-size:34px;margin-top:8px">No workout scheduled</h2><p class="page-copy">Plan a workout for today when you are ready.</p></div><button class="primary-btn" data-fit-home-planner>Open Planner →</button>`;
+      hero.innerHTML = `<div><div class="eyebrow">Today · Planner</div><h2 class="page-title home-hero-title">No workout scheduled</h2><p class="page-copy">Plan a workout for today, or start an outdoor activity below.</p></div><button class="primary-btn home-primary-action" data-fit-home-planner>Open Planner →</button>`;
       injectQuickActivities();
       return;
     }
@@ -81,7 +91,7 @@
     const exercises = (rows || []).length;
     const sets = (rows || []).reduce((sum, row) => sum + Math.max(1, Number(row.planned_sets || 0)), 0);
 
-    hero.innerHTML = `<div><div class="eyebrow">Today · Strength</div><h2 class="page-title" style="font-size:34px;margin-top:8px">${esc(planned.name)}</h2><p class="page-copy">${exercises} exercise${exercises===1?'':'s'} · ${sets} planned set${sets===1?'':'s'}</p></div><button class="primary-btn" data-fit-session-load="${planned.id}">Start workout →</button>`;
+    hero.innerHTML = `<div><div class="eyebrow">Today · Strength</div><h2 class="page-title home-hero-title">${esc(planned.name)}</h2><p class="page-copy">${exercises} exercise${exercises===1?'':'s'} · ${sets} planned set${sets===1?'':'s'}</p></div><button class="primary-btn home-primary-action" data-fit-session-load="${planned.id}">Start workout →</button>`;
     injectQuickActivities();
   }
 
@@ -101,9 +111,7 @@
     if (activityButton) {
       event.preventDefault();
       const type = activityButton.dataset.homeStartActivity;
-      if (typeof window.fitTrackStartActivity === 'function') {
-        window.fitTrackStartActivity(type);
-      }
+      if (typeof window.fitTrackStartActivity === 'function') window.fitTrackStartActivity(type);
     }
   });
 
