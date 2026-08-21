@@ -1,116 +1,18 @@
-// FitTrack exercise library powered by Supabase system exercises.
-// Kept separate from core Workout navigation for stability.
-(function () {
-  const supabase = window.fitTrackSupabase;
-  const state = window.fitTrackState;
-  const app = document.getElementById('app');
-  const toast = window.fitTrackShowToast;
-  if (!supabase || !state || !app) return;
-
-  let requestToken = 0;
-  let currentGroup = null;
-  let currentExercises = [];
-
-  function esc(value) {
-    return String(value ?? '')
-      .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;').replaceAll("'", '&#039;');
-  }
-
-  async function getUser() {
-    const { data, error } = await supabase.auth.getUser();
-    if (error) return null;
-    return data.user || null;
-  }
-
-  function libraryHead(copy = 'Browse exercises by muscle group. Personalised exercise imagery will be added during the final visual stage.') {
-    return `<div class="page-head"><div class="eyebrow">Exercise library</div><h1 class="page-title">Find an exercise</h1><p class="page-copy">${copy}</p></div>
-      <div class="tabs"><button class="tab" data-library-tab="Session">Session</button><button class="tab" data-library-tab="Planner">Planner</button><button class="tab active" data-library-tab="Library">Library</button></div>`;
-  }
-
-  function guidance(ex) {
-    const n = ex.name.toLowerCase();
-    const specific = {
-      'barbell bent over row': {
-        steps:['Stand with feet about hip-width apart and hold the bar just outside your legs.','Push your hips back and hinge forward while keeping your spine neutral and core braced.','Let the bar hang below your shoulders, then pull it toward your lower ribs/upper abdomen.','Drive the elbows back and briefly squeeze the shoulder blades together.','Lower the bar under control until the arms are straight, then repeat without losing your torso position.'],
-        tips:['Keep your neck in line with your spine.','Keep the bar close to your body.','Use a load that lets your torso stay stable.'],
-        mistakes:['Rounding the lower back.','Standing up between repetitions to create momentum.','Shrugging the shoulders instead of rowing with the back.'],
-        breathing:'Inhale and brace before the pull; exhale as you complete the row while maintaining trunk tension.'
-      },
-      'barbell bench press': {
-        steps:['Lie with your eyes roughly under the bar and plant your feet firmly.','Set your shoulder blades back and down and grip the bar slightly wider than shoulder width.','Unrack with straight arms and position the bar over your chest.','Lower the bar with control toward the mid-to-lower chest while keeping your forearms near vertical.','Press the bar upward to the start position without letting your shoulders roll forward.'],
-        tips:['Keep your feet planted and upper back tight.','Keep wrists stacked over the forearms.','Use a spotter or safeties for challenging sets.'],
-        mistakes:['Bouncing the bar off the chest.','Letting elbows flare excessively.','Losing shoulder-blade position during the press.'],
-        breathing:'Take a breath and brace before lowering; exhale through the press while staying controlled.'
-      },
-      'back squat': {
-        steps:['Set the bar securely across your upper back and stand with feet around shoulder width.','Brace your core and keep your chest and upper back firm.','Bend at the hips and knees together, allowing the knees to track in line with the toes.','Descend only as far as you can while maintaining balance and a stable spine.','Drive through the whole foot to stand tall and reset before the next repetition.'],
-        tips:['Keep pressure through the whole foot.','Let knees track naturally over the toes.','Choose depth based on mobility and control.'],
-        mistakes:['Knees collapsing inward.','Heels lifting from the floor.','Losing trunk position at the bottom.'],
-        breathing:'Take a deep breath and brace before descending; maintain pressure through the hardest part of the ascent.'
-      }
-    };
-    if (specific[n]) return specific[n];
-    const base = ex.instructions || `Perform the ${ex.name} through a comfortable, controlled range of motion.`;
-    return {
-      steps:[`Set up securely for the ${ex.name} and choose a manageable resistance.`,base,'Move through a controlled range while keeping the target muscles engaged.','Pause briefly at the working position instead of using momentum.','Return to the start position under control and reset before the next repetition.'],
-      tips:['Prioritise control and comfortable range of motion over heavier load.','Keep your posture stable throughout the set.','Stop the set if technique begins to break down.'],
-      mistakes:['Using momentum to move the resistance.','Rushing the lowering phase.','Increasing load at the expense of comfortable technique.'],
-      breathing:'Breathe steadily; generally exhale during the effort phase and inhale during the controlled return.'
-    };
-  }
-
-  async function renderGroups() {
-    const token = ++requestToken; currentGroup = null; state.route = 'workout'; state.activeTab = 'Library';
-    const user = await getUser(); if (token !== requestToken) return;
-    if (!user) { app.innerHTML = `${libraryHead()}<section class="card"><div class="card-title">Sign in to use the exercise library</div></section>`; return; }
-    app.innerHTML = `${libraryHead()}<section class="card"><div class="card-subtitle">Loading exercise library…</div></section>`;
-    const [{data:groups,error:groupError},{data:exercises,error:exerciseError}] = await Promise.all([
-      supabase.from('muscle_groups').select('id,name').order('name'),
-      supabase.from('exercises').select('id,name,primary_muscle_group_id,equipment,difficulty').eq('is_system',true).order('name')]);
-    if (token !== requestToken || state.route !== 'workout' || state.activeTab !== 'Library') return;
-    if (groupError || exerciseError) { app.innerHTML = `${libraryHead()}<section class="card"><div class="card-title">Could not load exercise library</div></section>`; return; }
-    const counts=new Map(); (exercises||[]).forEach(ex=>counts.set(ex.primary_muscle_group_id,(counts.get(ex.primary_muscle_group_id)||0)+1));
-    const visible=(groups||[]).filter(g=>(counts.get(g.id)||0)>0);
-    app.innerHTML=`${libraryHead()}<section class="grid grid-2">${visible.map(group=>`<button type="button" class="card exercise-card" data-library-group="${group.id}" data-library-group-name="${esc(group.name)}" style="text-align:left;color:inherit;cursor:pointer;width:100%"><div class="exercise-placeholder">${esc(group.name)} imagery coming later</div><div class="meta-row"><div><div class="card-title">${esc(group.name)}</div><div class="card-subtitle">${counts.get(group.id)} exercises</div></div><span class="accent" style="font-size:22px">→</span></div></button>`).join('')}</section>`;
-  }
-
-  async function renderGroup(groupId,groupName) {
-    const token=++requestToken; currentGroup={id:groupId,name:groupName};
-    app.innerHTML=`${libraryHead(`Exercises for ${esc(groupName)}. Use the search box to quickly find a movement.`)}<button type="button" class="ghost-btn" data-library-back style="margin-bottom:14px">← All muscle groups</button><section class="card"><div class="card-subtitle">Loading ${esc(groupName)} exercises…</div></section>`;
-    const {data,error}=await supabase.from('exercises').select('id,name,equipment,difficulty,secondary_muscles,instructions,primary_muscle_group_id').eq('is_system',true).eq('primary_muscle_group_id',groupId).order('name');
-    if(token!==requestToken||!currentGroup||currentGroup.id!==groupId)return;
-    if(error){toast?.('Could not load exercises');return;} currentExercises=data||[]; renderExerciseList('');
-  }
-
-  function renderExerciseList(search) {
-    if(!currentGroup)return; const q=search.trim().toLowerCase();
-    const filtered=currentExercises.filter(ex=>!q||ex.name.toLowerCase().includes(q)||(ex.equipment||'').toLowerCase().includes(q));
-    app.innerHTML=`${libraryHead(`Exercises for ${esc(currentGroup.name)}. Later, these will also carry the personalised FitTrack exercise imagery.`)}<button type="button" class="ghost-btn" data-library-back style="margin-bottom:14px">← All muscle groups</button><div class="card" style="margin-bottom:14px"><input id="exerciseLibrarySearch" class="auth-input" type="search" value="${esc(search)}" placeholder="Search ${esc(currentGroup.name)} exercises or equipment…" /></div><section class="grid grid-2">${filtered.length?filtered.map(ex=>`<article class="card exercise-card"><div class="exercise-placeholder">Exercise imagery coming later</div><div><div class="card-title">${esc(ex.name)}</div><div class="card-subtitle">${esc(ex.equipment||'—')} · ${esc(ex.difficulty||'—')}</div></div><div class="chips">${(ex.secondary_muscles||[]).map(m=>`<span class="chip">${esc(m)}</span>`).join('')||'<span class="chip">Primary focus</span>'}</div><p class="page-copy" style="font-size:13px">${esc(ex.instructions||'')}</p><button type="button" class="secondary-btn full-btn" data-library-exercise="${ex.id}">View exercise</button></article>`).join(''):'<article class="card"><div class="card-title">No matching exercises</div></article>'}</section>`;
-  }
-
-  function renderExerciseDetail(exerciseId) {
-    const ex=currentExercises.find(item=>item.id===exerciseId); if(!ex||!currentGroup)return; const g=guidance(ex);
-    app.innerHTML=`${libraryHead(`${esc(currentGroup.name)} exercise detail`)}
-      <button type="button" class="ghost-btn" data-library-group-return style="margin-bottom:14px">← Back to exercises</button>
-      <section class="card"><div class="exercise-placeholder" style="height:220px">Personalised ${esc(ex.name)} imagery coming in final visual stage</div><div style="height:16px"></div>
-      <div class="card-title">${esc(ex.name)}</div><div class="card-subtitle">${esc(ex.equipment||'—')} · ${esc(ex.difficulty||'—')}</div><div class="chips">${(ex.secondary_muscles||[]).map(m=>`<span class="chip">Also: ${esc(m)}</span>`).join('')}</div>
-      <div style="height:20px"></div><div class="section-title">How to perform</div><ol class="page-copy" style="padding-left:22px;line-height:1.7">${g.steps.map(s=>`<li style="margin:7px 0">${esc(s)}</li>`).join('')}</ol>
-      <div style="height:12px"></div><div class="section-title">Form tips</div><ul class="page-copy" style="padding-left:22px;line-height:1.7">${g.tips.map(s=>`<li>${esc(s)}</li>`).join('')}</ul>
-      <div style="height:12px"></div><div class="section-title">Common mistakes</div><ul class="page-copy" style="padding-left:22px;line-height:1.7">${g.mistakes.map(s=>`<li>${esc(s)}</li>`).join('')}</ul>
-      <div style="height:12px"></div><div class="section-title">Breathing</div><p class="page-copy">${esc(g.breathing)}</p>
-      <button type="button" class="primary-btn full-btn" data-library-add-soon>Add to workout</button></section>`;
-  }
-
-  document.addEventListener('click',event=>{
-    const libraryTab=event.target.closest('[data-tab="Library"]'); if(libraryTab)setTimeout(renderGroups,0);
-    const ownTab=event.target.closest('[data-library-tab]'); if(ownTab){const tab=ownTab.dataset.libraryTab;if(tab==='Library')renderGroups();else{++requestToken;currentGroup=null;state.activeTab=tab;window.fitTrackRender?.();}return;}
-    const group=event.target.closest('[data-library-group]');if(group){renderGroup(group.dataset.libraryGroup,group.dataset.libraryGroupName);return;}
-    if(event.target.closest('[data-library-back]')){renderGroups();return;}
-    if(event.target.closest('[data-library-group-return]')){renderExerciseList('');return;}
-    const exercise=event.target.closest('[data-library-exercise]');if(exercise){renderExerciseDetail(exercise.dataset.libraryExercise);return;}
-    if(event.target.closest('[data-library-add-soon]'))toast?.('Add to workout is the next step');
-    const route=event.target.closest('[data-route]');if(route&&route.dataset.route!=='workout'){++requestToken;currentGroup=null;}
-  });
-  document.addEventListener('input',event=>{if(event.target.id==='exerciseLibrarySearch')renderExerciseList(event.target.value);});
+// FitTrack visual Exercise Library powered by Supabase.
+(function(){
+ const supabase=window.fitTrackSupabase,state=window.fitTrackState,app=document.getElementById('app'),toast=window.fitTrackShowToast;if(!supabase||!state||!app)return;
+ let requestToken=0,currentGroup=null,currentExercises=[],activeFilter='All';
+ const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
+ async function getUser(){const{data,error}=await supabase.auth.getUser();return error?null:(data.user||null)}
+ function head(copy='Browse exercises by muscle group.') {return `<div class="page-head library-page-head"><div class="eyebrow">Exercise library</div><h1 class="page-title">Library</h1><p class="page-copy">${copy}</p></div><div class="tabs"><button class="tab" data-library-tab="Session">Session</button><button class="tab" data-library-tab="Planner">Planner</button><button class="tab active" data-library-tab="Library">Library</button></div>`}
+ function torso(group){const g=String(group||'').toLowerCase();let chest=g.includes('chest'),back=g.includes('back'),shoulder=g.includes('shoulder'),arm=g.includes('bicep')||g.includes('tricep')||g.includes('forearm'),core=g.includes('abs')||g.includes('core'),leg=g.includes('quad')||g.includes('ham')||g.includes('glute')||g.includes('calf')||g.includes('leg'),full=g.includes('full');return `<svg viewBox="0 0 180 110" aria-hidden="true"><g fill="#343941"><circle cx="90" cy="18" r="12"/><path d="M65 34 Q90 25 115 34 L124 68 Q111 91 90 101 Q69 91 56 68Z"/><path d="M62 40 L37 76 L47 83 L70 58Z"/><path d="M118 40 L143 76 L133 83 L110 58Z"/></g><g fill="var(--accent)" opacity=".95">${full?'<path d="M65 34 Q90 25 115 34 L124 68 Q111 91 90 101 Q69 91 56 68Z"/>':''}${chest?'<path d="M69 39 Q78 32 89 38 L89 57 Q77 57 67 51Z"/><path d="M91 38 Q102 32 111 39 L113 51 Q103 57 91 57Z"/>':''}${back?'<path d="M69 38 Q90 30 111 38 L116 60 Q104 72 90 77 Q76 72 64 60Z"/>':''}${shoulder?'<circle cx="63" cy="42" r="9"/><circle cx="117" cy="42" r="9"/>':''}${arm?'<path d="M55 49 L38 75 L47 81 L64 57Z"/><path d="M125 49 L142 75 L133 81 L116 57Z"/>':''}${core?'<rect x="77" y="57" width="26" height="31" rx="7"/>':''}${leg?'<path d="M73 78 L62 108 L78 108 L89 83Z"/><path d="M107 78 L118 108 L102 108 L91 83Z"/>':''}</g></svg>`}
+ function exerciseArt(ex,big=false,label=''){return `<div class="exercise-art ${big?'exercise-art-big':''}"><div class="exercise-art-glow"></div><div class="exercise-art-figure">${torso(currentGroup?.name||'Full Body')}</div><div class="exercise-art-equipment">${esc(ex.equipment||'Exercise')}</div>${label?`<span class="exercise-art-label">${label}</span>`:''}</div>`}
+ function guidance(ex){const n=ex.name.toLowerCase(),specific={'barbell bench press':{steps:['Lie on a flat bench with feet firmly planted.','Set your shoulder blades back and grip the bar slightly wider than shoulder width.','Lower the bar toward the mid chest with control.','Press the bar upward until the arms are extended without losing shoulder position.'],tips:['Keep feet planted and upper back tight.','Keep wrists stacked over forearms.','Use safeties or a spotter for challenging sets.'],mistakes:['Bouncing the bar off the chest.','Excessively flaring the elbows.','Letting the shoulders roll forward.'],breathing:'Inhale and brace before lowering; exhale through the press.'}};if(specific[n])return specific[n];return{steps:[`Set up securely for the ${ex.name}.`,ex.instructions||`Perform the ${ex.name} through a controlled range of motion.`,'Move smoothly while keeping the target muscles engaged.','Return to the start position under control.'],tips:['Prioritise control over load.','Maintain stable posture.','Stop if technique breaks down.'],mistakes:['Using momentum.','Rushing the lowering phase.','Using more load than you can control.'],breathing:'Exhale during the effort phase and inhale during the controlled return.'}}
+ async function renderGroups(){const token=++requestToken;currentGroup=null;activeFilter='All';state.route='workout';state.activeTab='Library';const user=await getUser();if(token!==requestToken)return;if(!user){app.innerHTML=`${head()}<section class="card">Sign in to use Library</section>`;return}app.innerHTML=`${head()}<section class="card"><div class="card-subtitle">Loading library…</div></section>`;const[{data:groups,error:gErr},{data:exercises,error:eErr}]=await Promise.all([supabase.from('muscle_groups').select('id,name').order('name'),supabase.from('exercises').select('id,primary_muscle_group_id').eq('is_system',true)]);if(gErr||eErr||token!==requestToken)return;const counts=new Map();(exercises||[]).forEach(x=>counts.set(x.primary_muscle_group_id,(counts.get(x.primary_muscle_group_id)||0)+1));const visible=(groups||[]).filter(g=>(counts.get(g.id)||0)>0);app.innerHTML=`${head('Choose a muscle group to explore exercises, technique and workout planning.')}<section class="library-group-list">${visible.map(g=>`<button class="library-group-card" data-library-group="${g.id}" data-library-group-name="${esc(g.name)}"><div><div class="card-title">${esc(g.name)}</div><div class="card-subtitle accent">${counts.get(g.id)} exercises</div></div><div class="library-group-art">${torso(g.name)}</div><span class="library-chevron">›</span></button>`).join('')}</section>`}
+ async function renderGroup(id,name){const token=++requestToken;currentGroup={id,name};activeFilter='All';app.innerHTML=`${head(`Exercises for ${esc(name)}.`)}<section class="card"><div class="card-subtitle">Loading ${esc(name)}…</div></section>`;const{data,error}=await supabase.from('exercises').select('id,name,equipment,difficulty,secondary_muscles,instructions,primary_muscle_group_id').eq('is_system',true).eq('primary_muscle_group_id',id).order('name');if(error||token!==requestToken)return toast?.('Could not load exercises');currentExercises=data||[];renderList('')}
+ function filters(){const equipment=[...new Set(currentExercises.map(x=>x.equipment).filter(Boolean))].slice(0,5);return ['All',...equipment]}
+ function renderList(search=''){if(!currentGroup)return;const q=search.trim().toLowerCase(),filtered=currentExercises.filter(ex=>(activeFilter==='All'||ex.equipment===activeFilter)&&(!q||ex.name.toLowerCase().includes(q)||(ex.equipment||'').toLowerCase().includes(q)));app.innerHTML=`${head(`${esc(currentGroup.name)} · ${currentExercises.length} exercises`)}<div class="library-toolbar"><button class="ghost-btn" data-library-back>← All groups</button><input id="exerciseLibrarySearch" class="auth-input library-search" type="search" value="${esc(search)}" placeholder="Search exercises…"></div><div class="library-filter-row">${filters().map(f=>`<button class="library-filter ${activeFilter===f?'active':''}" data-library-filter="${esc(f)}">${esc(f)}</button>`).join('')}</div><section class="library-exercise-grid">${filtered.map(ex=>`<button class="library-exercise-card" data-library-exercise="${ex.id}">${exerciseArt(ex)}<div class="library-exercise-copy"><div class="card-title">${esc(ex.name)}</div><div class="card-subtitle">${esc(currentGroup.name)}${(ex.secondary_muscles||[]).length?' · '+esc((ex.secondary_muscles||[]).slice(0,2).join(' · ')):''}</div><span class="exercise-type-pill">${esc(ex.equipment||'Exercise')}</span></div><span class="library-favorite">☆</span></button>`).join('')||'<section class="card">No matching exercises</section>'}</section>`}
+ function renderDetail(id){const ex=currentExercises.find(x=>x.id===id);if(!ex||!currentGroup)return;const g=guidance(ex);app.innerHTML=`${head(`${esc(currentGroup.name)} exercise guide`)}<button class="ghost-btn" data-library-group-return>← Back to ${esc(currentGroup.name)}</button><section class="exercise-detail-shell"><div class="exercise-detail-head"><div><div class="eyebrow">${esc(currentGroup.name)} exercise</div><h2 class="page-title">${esc(ex.name)}</h2><div class="card-subtitle">${esc(currentGroup.name)}${(ex.secondary_muscles||[]).length?' · '+esc((ex.secondary_muscles||[]).join(' · ')):''}</div></div><span class="library-favorite detail-favorite">☆</span></div><div class="exercise-phase-grid">${exerciseArt(ex,true,'Start')}${exerciseArt(ex,true,'Finish')}</div><section class="exercise-detail-section"><div class="section-title">Target muscles</div><div class="target-muscle-wrap"><div class="target-muscle-art">${torso(currentGroup.name)}</div><div class="chips"><span class="chip accent">Primary · ${esc(currentGroup.name)}</span>${(ex.secondary_muscles||[]).map(m=>`<span class="chip">${esc(m)}</span>`).join('')}</div></div></section><section class="exercise-detail-section"><div class="section-title">How to perform</div><ol class="page-copy exercise-steps">${g.steps.map(s=>`<li>${esc(s)}</li>`).join('')}</ol></section><section class="grid grid-3 exercise-meta-grid"><article class="card"><div class="eyebrow">Equipment</div><div class="card-title meta-small">${esc(ex.equipment||'—')}</div></article><article class="card"><div class="eyebrow">Difficulty</div><div class="card-title meta-small">${esc(ex.difficulty||'—')}</div></article><article class="card"><div class="eyebrow">Focus</div><div class="card-title meta-small">${esc(currentGroup.name)}</div></article></section><details class="card exercise-more"><summary>Form tips & common mistakes</summary><div class="section-title" style="margin-top:16px">Form tips</div><ul class="page-copy">${g.tips.map(s=>`<li>${esc(s)}</li>`).join('')}</ul><div class="section-title" style="margin-top:14px">Common mistakes</div><ul class="page-copy">${g.mistakes.map(s=>`<li>${esc(s)}</li>`).join('')}</ul><div class="section-title" style="margin-top:14px">Breathing</div><p class="page-copy">${esc(g.breathing)}</p></details><button class="primary-btn full-btn library-add-button" data-library-add-soon>＋ Add to workout</button></section>`}
+ document.addEventListener('click',e=>{const libraryTab=e.target.closest('[data-tab="Library"]');if(libraryTab)setTimeout(renderGroups,0);const own=e.target.closest('[data-library-tab]');if(own){const t=own.dataset.libraryTab;if(t==='Library')renderGroups();else{++requestToken;currentGroup=null;state.activeTab=t;window.fitTrackRender?.()}return}const group=e.target.closest('[data-library-group]');if(group)return renderGroup(group.dataset.libraryGroup,group.dataset.libraryGroupName);if(e.target.closest('[data-library-back]'))return renderGroups();if(e.target.closest('[data-library-group-return]'))return renderList('');const filter=e.target.closest('[data-library-filter]');if(filter){activeFilter=filter.dataset.libraryFilter;return renderList(document.getElementById('exerciseLibrarySearch')?.value||'')}const ex=e.target.closest('[data-library-exercise]');if(ex)return renderDetail(ex.dataset.libraryExercise);const route=e.target.closest('[data-route]');if(route&&route.dataset.route!=='workout'){++requestToken;currentGroup=null}},true);
+ document.addEventListener('input',e=>{if(e.target.id==='exerciseLibrarySearch')renderList(e.target.value)});
 })();
