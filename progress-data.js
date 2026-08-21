@@ -1,182 +1,36 @@
-// FitTrack real progress analytics from completed workouts.
-// This script only owns the Progress screen and does not modify core navigation.
+// FitTrack Progress: strength + outdoor activity analytics.
 (function () {
   const supabase = window.fitTrackSupabase;
   const state = window.fitTrackState;
   if (!supabase || !state) return;
-
   let requestId = 0;
+  let progressTab = 'Workouts';
 
-  async function getUser() {
-    const { data, error } = await supabase.auth.getUser();
-    if (error) return null;
-    return data.user || null;
+  async function getUser(){ const {data,error}=await supabase.auth.getUser(); return error?null:(data.user||null); }
+  function esc(v){return String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');}
+  function fmt(v){return Math.round(Number(v||0)).toLocaleString();}
+  function dur(sec){ const s=Number(sec||0); if(s<3600)return `${Math.round(s/60)} min`; return `${Math.floor(s/3600)}h ${Math.round((s%3600)/60)}m`; }
+  function tabs(){return `<div class="tabs" style="margin-bottom:14px">${['Workouts','Activities'].map(t=>`<button class="tab ${progressTab===t?'active':''}" data-progress-tab="${t}">${t}</button>`).join('')}</div>`;}
+
+  function analyse(rows){
+    let totalVolume=0,totalSets=0; const byExercise=new Map();
+    rows.forEach(row=>{ totalVolume+=Number(row.total_volume_kg||0); totalSets+=Number(row.completed_sets||0); (row.workout_state?.exercises||[]).forEach(ex=>{const done=(ex.sets||[]).filter(s=>s.done);if(!done.length)return;const max=Math.max(...done.map(s=>Number(s.weight||0)));const p=byExercise.get(ex.name)||[];p.push({date:row.completed_at,maxWeight:max});byExercise.set(ex.name,p);});});
+    let strongest=null,strongestWeight=-1,mostImproved=null,improvement=null;
+    byExercise.forEach((points,name)=>{const local=Math.max(...points.map(p=>p.maxWeight));if(local>strongestWeight){strongestWeight=local;strongest=name;}const sorted=[...points].sort((a,b)=>new Date(a.date)-new Date(b.date));if(sorted.length>=2){const delta=sorted.at(-1).maxWeight-sorted[0].maxWeight;if(improvement==null||delta>improvement){improvement=delta;mostImproved=name;}}});
+    return {totalVolume,totalSets,strongest,strongestWeight,mostImproved,improvement,recent:rows.slice(0,6).reverse()};
+  }
+  function miniBars(rows){if(!rows.length)return '<div class="page-copy">Complete workouts to build your trend.</div>';const max=Math.max(...rows.map(r=>Number(r.total_volume_kg||0)),1);return `<div style="display:flex;align-items:end;gap:8px;height:150px;margin-top:18px">${rows.map(r=>{const h=Math.max(8,Math.round(Number(r.total_volume_kg||0)/max*130));const d=new Date(r.completed_at).toLocaleDateString(undefined,{day:'numeric',month:'short'});return `<div style="flex:1;display:flex;flex-direction:column;justify-content:end;align-items:center;gap:7px;min-width:0"><div style="width:100%;max-width:46px;height:${h}px;border-radius:8px 8px 3px 3px;background:var(--accent)"></div><small style="color:var(--muted);font-size:10px">${d}</small></div>`;}).join('')}</div>`;}
+
+  function renderWorkouts(rows){const a=analyse(rows),avg=rows.length?a.totalVolume/rows.length:0;document.getElementById('app').innerHTML=`<div data-real-progress="1"><div class="page-head"><div class="eyebrow">Analytics</div><h1 class="page-title">Progress</h1><p class="page-copy">Your strength and outdoor activity trends.</p></div>${tabs()}<section class="grid grid-4"><article class="card activity-card"><div class="eyebrow">Workouts</div><div class="metric metric-sm">${rows.length}</div><div class="metric-label">completed</div></article><article class="card activity-card"><div class="eyebrow">Sets</div><div class="metric metric-sm">${a.totalSets}</div><div class="metric-label">completed</div></article><article class="card activity-card"><div class="eyebrow">Volume</div><div class="metric metric-sm">${fmt(a.totalVolume)}</div><div class="metric-label">total kg</div></article><article class="card activity-card"><div class="eyebrow">Average</div><div class="metric metric-sm">${fmt(avg)}</div><div class="metric-label">kg / workout</div></article></section><div style="height:14px"></div><section class="grid grid-2"><article class="card"><div class="section-title">Workout volume</div><div class="card-title">Recent sessions</div>${miniBars(a.recent)}</article><article class="card"><div class="section-title">Strength</div><div class="card-title">Top recorded lift</div>${a.strongest?`<div class="metric" style="margin-top:22px">${Number(a.strongestWeight).toLocaleString()} kg</div><div class="metric-label">${esc(a.strongest)}</div>`:`<p class="page-copy">Complete a workout to record your first lift.</p>`}<div style="height:20px"></div><div class="section-title">Progression</div>${a.mostImproved&&a.improvement>0?`<div class="list-row"><div class="list-row-title">${esc(a.mostImproved)}</div><strong class="accent">+${a.improvement} kg</strong></div>`:`<div class="page-copy">Repeat exercises across workouts to measure improvement.</div>`}</article></section></div>`;}
+
+  function renderActivities(rows){
+    const totalDistance=rows.reduce((s,r)=>s+Number(r.distance_km||0),0), totalTime=rows.reduce((s,r)=>s+Number(r.duration_seconds||0),0), calories=rows.reduce((s,r)=>s+Number(r.estimated_calories||0),0);
+    const counts={walk:0,run:0,cycle:0}; rows.forEach(r=>counts[r.activity_type]=(counts[r.activity_type]||0)+1);
+    const recent=rows.slice(0,8).reverse(); const max=Math.max(...recent.map(r=>Number(r.distance_km||0)),1);
+    const bars=recent.length?`<div style="display:flex;align-items:end;gap:8px;height:150px;margin-top:18px">${recent.map(r=>{const h=Math.max(8,Math.round(Number(r.distance_km||0)/max*130));const d=new Date(r.started_at).toLocaleDateString(undefined,{day:'numeric',month:'short'});return `<div style="flex:1;display:flex;flex-direction:column;justify-content:end;align-items:center;gap:7px"><div style="width:100%;max-width:46px;height:${h}px;border-radius:8px 8px 3px 3px;background:var(--accent)"></div><small style="color:var(--muted);font-size:10px">${d}</small></div>`;}).join('')}</div>`:'<div class="page-copy">Complete an activity to build your distance trend.</div>';
+    document.getElementById('app').innerHTML=`<div data-real-progress="1"><div class="page-head"><div class="eyebrow">Analytics</div><h1 class="page-title">Progress</h1><p class="page-copy">Your strength and outdoor activity trends.</p></div>${tabs()}<section class="grid grid-4"><article class="card activity-card"><div class="eyebrow">Activities</div><div class="metric metric-sm">${rows.length}</div><div class="metric-label">completed</div></article><article class="card activity-card"><div class="eyebrow">Distance</div><div class="metric metric-sm">${totalDistance.toFixed(1)}</div><div class="metric-label">total km</div></article><article class="card activity-card"><div class="eyebrow">Time</div><div class="metric metric-sm">${dur(totalTime)}</div><div class="metric-label">active time</div></article><article class="card activity-card"><div class="eyebrow">Calories</div><div class="metric metric-sm">${fmt(calories)}</div><div class="metric-label">estimated kcal</div></article></section><div style="height:14px"></div><section class="grid grid-2"><article class="card"><div class="section-title">Distance trend</div><div class="card-title">Recent activities</div>${bars}</article><article class="card"><div class="section-title">Activity mix</div><div class="list"><div class="list-row"><div class="list-row-title">Walks</div><strong>${counts.walk}</strong></div><div class="list-row"><div class="list-row-title">Runs</div><strong>${counts.run}</strong></div><div class="list-row"><div class="list-row-title">Cycles</div><strong>${counts.cycle}</strong></div></div></article></section></div>`;
   }
 
-  function esc(value) {
-    return String(value ?? '')
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#039;');
-  }
-
-  function fmt(value) {
-    return Math.round(Number(value || 0)).toLocaleString();
-  }
-
-  function analyse(rows) {
-    let totalVolume = 0;
-    let totalSets = 0;
-    const byExercise = new Map();
-
-    rows.forEach(row => {
-      totalVolume += Number(row.total_volume_kg || 0);
-      totalSets += Number(row.completed_sets || 0);
-      const exercises = row.workout_state?.exercises || [];
-      exercises.forEach(ex => {
-        const doneSets = (ex.sets || []).filter(set => set.done);
-        if (!doneSets.length) return;
-        const maxWeight = Math.max(...doneSets.map(set => Number(set.weight || 0)));
-        const previous = byExercise.get(ex.name) || [];
-        previous.push({ date: row.completed_at, maxWeight });
-        byExercise.set(ex.name, previous);
-      });
-    });
-
-    let strongest = null;
-    let strongestWeight = -1;
-    let mostImproved = null;
-    let improvement = null;
-
-    byExercise.forEach((points, name) => {
-      const localMax = Math.max(...points.map(p => p.maxWeight));
-      if (localMax > strongestWeight) {
-        strongestWeight = localMax;
-        strongest = name;
-      }
-
-      const sorted = [...points].sort((a, b) => new Date(a.date) - new Date(b.date));
-      if (sorted.length >= 2) {
-        const first = sorted[0].maxWeight;
-        const last = sorted.at(-1).maxWeight;
-        const delta = last - first;
-        if (improvement == null || delta > improvement) {
-          improvement = delta;
-          mostImproved = name;
-        }
-      }
-    });
-
-    const recent = rows.slice(0, 6).reverse();
-    return { totalVolume, totalSets, strongest, strongestWeight, mostImproved, improvement, recent };
-  }
-
-  function miniBars(rows) {
-    if (!rows.length) return '<div class="page-copy">Complete workouts to build your trend.</div>';
-    const max = Math.max(...rows.map(r => Number(r.total_volume_kg || 0)), 1);
-    return `<div style="display:flex;align-items:end;gap:8px;height:150px;margin-top:18px">${rows.map(row => {
-      const height = Math.max(8, Math.round((Number(row.total_volume_kg || 0) / max) * 130));
-      const date = new Date(row.completed_at).toLocaleDateString(undefined, { day:'numeric', month:'short' });
-      return `<div style="flex:1;display:flex;flex-direction:column;justify-content:end;align-items:center;gap:7px;min-width:0">
-        <div title="${fmt(row.total_volume_kg)} kg" style="width:100%;max-width:46px;height:${height}px;border-radius:8px 8px 3px 3px;background:var(--accent)"></div>
-        <small style="color:var(--muted);font-size:10px;white-space:nowrap">${date}</small>
-      </div>`;
-    }).join('')}</div>`;
-  }
-
-  function renderProgress(rows) {
-    const a = analyse(rows);
-    const avgVolume = rows.length ? a.totalVolume / rows.length : 0;
-
-    document.getElementById('app').innerHTML = `
-      <div data-real-progress="1">
-        <div class="page-head">
-          <div class="eyebrow">Analytics</div>
-          <h1 class="page-title">Progress</h1>
-          <p class="page-copy">Calculated from your actual completed FitTrack workouts.</p>
-        </div>
-
-        <section class="grid grid-4">
-          <article class="card activity-card">
-            <div class="eyebrow">Workouts</div>
-            <div><div class="metric metric-sm">${rows.length}</div><div class="metric-label">completed</div></div>
-          </article>
-          <article class="card activity-card">
-            <div class="eyebrow">Sets</div>
-            <div><div class="metric metric-sm">${a.totalSets}</div><div class="metric-label">completed</div></div>
-          </article>
-          <article class="card activity-card">
-            <div class="eyebrow">Volume</div>
-            <div><div class="metric metric-sm">${fmt(a.totalVolume)}</div><div class="metric-label">total kg</div></div>
-          </article>
-          <article class="card activity-card">
-            <div class="eyebrow">Average</div>
-            <div><div class="metric metric-sm">${fmt(avgVolume)}</div><div class="metric-label">kg / workout</div></div>
-          </article>
-        </section>
-
-        <div style="height:14px"></div>
-        <section class="grid grid-2">
-          <article class="card">
-            <div class="section-title">Workout volume</div>
-            <div class="card-title">Recent sessions</div>
-            ${miniBars(a.recent)}
-          </article>
-          <article class="card">
-            <div class="section-title">Strength</div>
-            <div class="card-title">Top recorded lift</div>
-            ${a.strongest ? `
-              <div class="metric" style="margin-top:22px">${Number(a.strongestWeight).toLocaleString()} kg</div>
-              <div class="metric-label">${esc(a.strongest)}</div>` : `
-              <p class="page-copy" style="margin-top:16px">Complete a workout to record your first lift.</p>`}
-            <div style="height:20px"></div>
-            <div class="section-title">Progression</div>
-            ${a.mostImproved && a.improvement > 0 ? `
-              <div class="list-row">
-                <div><div class="list-row-title">${esc(a.mostImproved)}</div><div class="list-row-meta">First saved workout → latest saved workout</div></div>
-                <strong class="accent">+${Number(a.improvement).toLocaleString()} kg</strong>
-              </div>` : `
-              <div class="page-copy">Log the same exercise across at least two workouts to measure improvement.</div>`}
-          </article>
-        </section>
-      </div>`;
-  }
-
-  async function loadProgress() {
-    if (state.route !== 'progress') return;
-    const mine = ++requestId;
-    const user = await getUser();
-    if (mine !== requestId || state.route !== 'progress') return;
-
-    if (!user) {
-      document.getElementById('app').innerHTML = `
-        <div data-real-progress="1">
-          <div class="page-head"><div class="eyebrow">Analytics</div><h1 class="page-title">Progress</h1><p class="page-copy">Sign in to see progress from your saved workouts.</p></div>
-        </div>`;
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from('completed_workouts')
-      .select('workout_name, workout_state, total_volume_kg, completed_sets, completed_at')
-      .eq('user_id', user.id)
-      .order('completed_at', { ascending: false })
-      .limit(100);
-
-    if (mine !== requestId || state.route !== 'progress') return;
-    if (error) {
-      console.warn('FitTrack progress load failed:', error.message);
-      return;
-    }
-    renderProgress(data || []);
-  }
-
-  document.addEventListener('click', (event) => {
-    const nav = event.target.closest('[data-route]');
-    if (!nav) return;
-    if (nav.dataset.route === 'progress') setTimeout(loadProgress, 30);
-    else requestId += 1;
-  });
+  async function loadProgress(){if(state.route!=='progress')return;const mine=++requestId,user=await getUser();if(!user||mine!==requestId||state.route!=='progress')return;if(progressTab==='Workouts'){const {data,error}=await supabase.from('completed_workouts').select('workout_name,workout_state,total_volume_kg,completed_sets,completed_at').eq('user_id',user.id).order('completed_at',{ascending:false}).limit(100);if(!error&&mine===requestId)renderWorkouts(data||[]);}else{const {data,error}=await supabase.from('activity_sessions').select('activity_type,started_at,duration_seconds,distance_km,avg_speed_kmh,avg_pace_min_per_km,estimated_calories').eq('user_id',user.id).order('started_at',{ascending:false}).limit(200);if(!error&&mine===requestId)renderActivities(data||[]);}}
+  document.addEventListener('click',e=>{const tab=e.target.closest('[data-progress-tab]');if(tab){e.preventDefault();progressTab=tab.dataset.progressTab;loadProgress();return;}const nav=e.target.closest('[data-route]');if(!nav)return;if(nav.dataset.route==='progress')setTimeout(loadProgress,30);else requestId++;});
 })();
