@@ -1,26 +1,22 @@
-// FitTrack PWA registration and aggressive update handling during active development.
+// FitTrack development mode: remove stale service workers and caches so every launch gets fresh files.
 (function(){
-  if(!('serviceWorker' in navigator)) return;
-  let reloading=false;
-  navigator.serviceWorker.addEventListener('controllerchange',()=>{
-    if(reloading) return;
-    reloading=true;
-    window.location.reload();
-  });
   window.addEventListener('load',async()=>{
     try{
-      const reg=await navigator.serviceWorker.register('./service-worker.js?v=20260821-10',{scope:'./',updateViaCache:'none'});
-      await reg.update();
-      if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
-      reg.addEventListener('updatefound',()=>{
-        const worker=reg.installing;
-        if(!worker) return;
-        worker.addEventListener('statechange',()=>{
-          if(worker.state==='installed'&&navigator.serviceWorker.controller){
-            worker.postMessage?.({type:'SKIP_WAITING'});
-          }
-        });
-      });
-    }catch(err){console.warn('FitTrack service worker registration failed:',err);}
+      if('serviceWorker' in navigator){
+        const regs=await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map(reg=>reg.unregister()));
+      }
+      if('caches' in window){
+        const keys=await caches.keys();
+        await Promise.all(keys.filter(k=>k.startsWith('fittrack-')).map(k=>caches.delete(k)));
+      }
+      const marker='fittrack-cache-reset-v1';
+      if(!sessionStorage.getItem(marker)){
+        sessionStorage.setItem(marker,'1');
+        const url=new URL(window.location.href);
+        url.searchParams.set('fresh','20260821-11');
+        window.location.replace(url.toString());
+      }
+    }catch(err){console.warn('FitTrack cache reset failed:',err);}
   });
 })();
