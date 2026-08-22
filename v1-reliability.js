@@ -19,7 +19,10 @@
   function syncNav(){document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.route===state.route))}
   function activateEnhancer(){
     if(state.route==='home')window.fitTrackRenderHome?.();
-    if(state.route==='workout'&&state.activeTab==='Library')window.fitTrackRenderLibrary?.();
+    if(state.route==='workout'&&state.activeTab==='Library'&&!app.querySelector('.library-group-list,.library-exercise-grid')){
+      const libraryTab=app.querySelector('[data-tab="Library"]');
+      if(libraryTab)libraryTab.click();
+    }
     window.dispatchEvent(new CustomEvent('fittrack:view-restored',{detail:{route:state.route,tab:state.activeTab}}));
   }
   function restoreView(){
@@ -33,7 +36,6 @@
     try{window.fitTrackSaveDraft?.('')}catch(e){console.warn('FitTrack autosave skipped',e)}
   }
 
-  // Keep the current view on refresh / PWA resume, including Safari's back-forward cache.
   window.addEventListener('pageshow',e=>{if(e.persisted)setTimeout(restoreView,40)});
   document.addEventListener('visibilitychange',()=>{
     if(document.visibilityState==='hidden')saveSessionQuietly();
@@ -42,11 +44,9 @@
   window.addEventListener('pagehide',saveSessionQuietly);
   window.addEventListener('beforeunload',saveSessionQuietly);
 
-  // Give the user useful connectivity feedback without blocking the app.
   window.addEventListener('offline',()=>toast('You are offline. Saved screens remain usable; syncing will resume when connected.'));
   window.addEventListener('online',()=>{toast('Back online');setTimeout(activateEnhancer,100)});
 
-  // Broken visuals must not collapse cards or create unusable blank space.
   document.addEventListener('error',e=>{
     const img=e.target;if(!(img instanceof HTMLImageElement))return;
     if(!img.closest('.exercise-art,.session-v2-hero,.library-group-art,.target-muscle-art'))return;
@@ -56,18 +56,15 @@
     }
   },true);
 
-  // App errors should be diagnosable without leaving a permanently invisible shell.
   window.addEventListener('error',()=>{app.style.visibility='visible';app.style.opacity='1'});
   window.addEventListener('unhandledrejection',()=>{app.style.visibility='visible';app.style.opacity='1'});
 
-  // Persist navigation immediately when enhancer scripts change state directly.
   document.addEventListener('click',e=>{
     const route=e.target.closest('[data-route]')?.dataset.route;
     if(validRoutes.includes(route))localStorage.setItem(routeKey,route);
-    const tab=e.target.closest('[data-tab],[data-library-tab]')?.dataset.tab||e.target.closest('[data-library-tab]')?.dataset.libraryTab;
+    const tab=e.target.closest('[data-tab]')?.dataset.tab||e.target.closest('[data-library-tab]')?.dataset.libraryTab;
     if(validTabs.includes(tab))localStorage.setItem(tabKey,tab);
   },true);
 
-  // Initial lifecycle reconciliation after every feature script has had time to attach.
   setTimeout(()=>{normalizeState();syncNav();activateEnhancer();app.style.visibility='visible';app.style.opacity='1'},180);
 })();
