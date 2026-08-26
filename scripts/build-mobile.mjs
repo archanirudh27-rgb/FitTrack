@@ -19,7 +19,6 @@ for(const entry of entries){
   if(/\.(html|js|css|webmanifest|svg|png|jpg|jpeg|webp)$/i.test(name))await fs.copyFile(src,dst);
 }
 
-// Health Connect requires a privacy policy surface. Keep a bundled copy in the native app.
 try{await fs.copyFile(path.join(root,'privacy-policy.html'),path.join(out,'privacypolicy.html'))}catch{}
 
 await build({
@@ -35,6 +34,6 @@ await build({
 
 const indexPath=path.join(out,'index.html');
 let html=await fs.readFile(indexPath,'utf8');
-html=html.replace('<script src="health-connect-bridge.js?v=20260826-46"></script>','<script src="mobile-health-adapter.js"></script><script src="health-connect-bridge.js?v=20260826-46"></script>');
+html=html.replace('<script src="health-connect-bridge.js?v=20260826-47"></script>','<script src="mobile-health-adapter.js"></script><script src="health-connect-bridge.js?v=20260826-47"></script>');
 await fs.writeFile(indexPath,html);
 console.log('FitTrack mobile web bundle ready in www/');
