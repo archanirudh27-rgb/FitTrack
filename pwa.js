@@ -1,6 +1,6 @@
 // FitTrack PWA cache hygiene + one-time build refresh.
 (function(){
-  const BUILD='20260826-47';
+  const BUILD='20260826-48';
   const BUILD_KEY='fittrack:pwa-build';
 
   window.addEventListener('load',async()=>{
