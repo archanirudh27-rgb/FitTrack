@@ -1,8 +1,8 @@
 {
   "name": "FitTrack",
   "short_name": "FitTrack",
-  "description": "Personal fitness tracking for strength, walking, running and cycling.",
-  "start_url": "./?_ftv=20260826-45",
+  "description": "Personalized strength training, progress and wearable health insights.",
+  "start_url": "./?_ftv=20260826-46",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait-primary",
