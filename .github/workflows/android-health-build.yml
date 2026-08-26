@@ -2,6 +2,19 @@ name: Build FitTrack Android
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'scripts/build-mobile.mjs'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'capacitor.config.json'
+      - 'health-connect-bridge.js'
+      - 'health-dashboard.js'
+      - 'health-home.js'
+      - 'privacy-policy.html'
+      - '.github/workflows/android-health-build.yml'
 
 jobs:
   build:
