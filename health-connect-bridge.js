@@ -1,111 +1,14 @@
 // FitTrack Health Connect bridge contract.
-// In the PWA this exposes dashboard/read-only behavior. In the Android Capacitor build,
-// a native FitTrackHealth plugin can provide Health Connect data using this contract.
+// PWA: read-only dashboard. Android Capacitor build: native Health adapter supplies Health Connect data.
 (function(){
-  const supabase=window.fitTrackSupabase;
-  if(!supabase)return;
-
-  const plugin=()=>window.Capacitor?.Plugins?.FitTrackHealth||null;
+  const supabase=window.fitTrackSupabase;if(!supabase)return;
+  const plugin=()=>window.fitTrackNativeHealth||window.Capacitor?.Plugins?.FitTrackHealth||null;
   const toast=msg=>window.fitTrackShowToast?.(msg);
-
-  async function currentUser(){
-    const{data,error}=await supabase.auth.getUser();
-    return error?null:(data?.user||null);
-  }
-
+  async function currentUser(){const{data,error}=await supabase.auth.getUser();return error?null:(data?.user||null)}
   function available(){return !!plugin()}
-
-  async function requestPermissions(){
-    const p=plugin();
-    if(!p) return {available:false,granted:false};
-    if(p.isAvailable){const r=await p.isAvailable();if(r?.available===false)return{available:false,granted:false}}
-    if(!p.requestPermissions)return{available:true,granted:true};
-    const r=await p.requestPermissions({
-      read:['steps','distance','activeCalories','heartRate','restingHeartRate','hrv','sleep','oxygenSaturation','respiratoryRate','exerciseSessions']
-    });
-    return {available:true,granted:r?.granted!==false};
-  }
-
-  function dailyRow(userId,d){
-    return {
-      user_id:userId,
-      metric_date:d.date,
-      steps:Number(d.steps||0),
-      distance_km:Number(d.distanceKm||0),
-      active_calories:Number(d.activeCalories||0),
-      resting_hr_bpm:d.restingHeartRate==null?null:Number(d.restingHeartRate),
-      avg_hr_bpm:d.avgHeartRate==null?null:Number(d.avgHeartRate),
-      min_hr_bpm:d.minHeartRate==null?null:Number(d.minHeartRate),
-      max_hr_bpm:d.maxHeartRate==null?null:Number(d.maxHeartRate),
-      hrv_rmssd_ms:d.hrvRmssdMs==null?null:Number(d.hrvRmssdMs),
-      sleep_minutes:d.sleepMinutes==null?null:Number(d.sleepMinutes),
-      deep_sleep_minutes:d.deepSleepMinutes==null?null:Number(d.deepSleepMinutes),
-      rem_sleep_minutes:d.remSleepMinutes==null?null:Number(d.remSleepMinutes),
-      light_sleep_minutes:d.lightSleepMinutes==null?null:Number(d.lightSleepMinutes),
-      awake_minutes:d.awakeMinutes==null?null:Number(d.awakeMinutes),
-      spo2_avg:d.spo2Avg==null?null:Number(d.spo2Avg),
-      respiratory_rate_avg:d.respiratoryRateAvg==null?null:Number(d.respiratoryRateAvg),
-      source_system:d.sourceSystem||'health_connect',
-      synced_at:new Date().toISOString()
-    };
-  }
-
-  function activityRow(userId,s){
-    const type=String(s.type||'activity').toLowerCase();
-    const duration=Number(s.durationSeconds||0);
-    const distance=Number(s.distanceKm||0);
-    const pace=s.avgPaceMinPerKm!=null?Number(s.avgPaceMinPerKm):(distance&&duration?(duration/60)/distance:null);
-    const speed=s.avgSpeedKmh!=null?Number(s.avgSpeedKmh):(duration?distance/(duration/3600):0);
-    return {
-      user_id:userId,
-      activity_type:type,
-      started_at:s.startTime,
-      ended_at:s.endTime||null,
-      duration_seconds:duration,
-      distance_km:distance,
-      avg_speed_kmh:Number(speed||0),
-      avg_pace_min_per_km:pace,
-      estimated_calories:Number(s.calories||0),
-      estimated_steps:type==='cycle'?null:Number(s.steps||0),
-      route_geojson:null,
-      source_system:s.sourceSystem||'health_connect',
-      source_external_id:String(s.externalId||`${s.startTime||''}-${type}`),
-      is_imported:true
-    };
-  }
-
-  async function sync({days=30}={}){
-    const p=plugin();
-    if(!p){toast('Health Connect sync is available in the Android FitTrack app.');return{ok:false,reason:'native_required'}}
-    const user=await currentUser();
-    if(!user){toast('Sign in to sync health data');return{ok:false,reason:'auth'}}
-    try{
-      const perm=await requestPermissions();
-      if(!perm.available){toast('Health Connect is not available on this device');return{ok:false,reason:'unavailable'}}
-      if(!perm.granted){toast('Health permissions were not granted');return{ok:false,reason:'permission'}}
-      const end=new Date();const start=new Date(end);start.setDate(start.getDate()-Math.max(1,Number(days||30)));
-      if(!p.readSummary)throw new Error('FitTrackHealth native bridge is missing readSummary');
-      const result=await p.readSummary({startTime:start.toISOString(),endTime:end.toISOString()});
-      const daily=(result?.days||[]).filter(x=>x?.date).map(x=>dailyRow(user.id,x));
-      const sessions=(result?.sessions||[]).filter(x=>x?.startTime).map(x=>activityRow(user.id,x));
-      if(daily.length){
-        const{error}=await supabase.from('health_daily').upsert(daily,{onConflict:'user_id,metric_date'});
-        if(error)throw error;
-      }
-      if(sessions.length){
-        const{error}=await supabase.from('activity_sessions').upsert(sessions,{onConflict:'user_id,source_system,source_external_id'});
-        if(error)throw error;
-      }
-      localStorage.setItem('fittrack:health-last-sync',new Date().toISOString());
-      window.dispatchEvent(new CustomEvent('fittrack:health-synced',{detail:{daily:daily.length,sessions:sessions.length}}));
-      toast(`Health synced · ${daily.length} days · ${sessions.length} activities`);
-      return{ok:true,daily:daily.length,sessions:sessions.length};
-    }catch(err){
-      console.error('FitTrack Health sync failed',err);
-      toast(err?.message?.includes('health_daily')?'Health database setup is required before first sync.':'Could not sync Health Connect');
-      return{ok:false,error:err};
-    }
-  }
-
+  async function requestPermissions(){const p=plugin();if(!p)return{available:false,granted:false};if(p.isAvailable){const r=await p.isAvailable();if(r?.available===false)return{available:false,granted:false}}if(!p.requestPermissions)return{available:true,granted:true};const r=await p.requestPermissions();return{available:true,granted:r?.granted!==false}}
+  function dailyRow(userId,d){return{user_id:userId,metric_date:d.date,steps:Number(d.steps||0),distance_km:Number(d.distanceKm||0),active_calories:Number(d.activeCalories||0),resting_hr_bpm:d.restingHeartRate==null?null:Number(d.restingHeartRate),avg_hr_bpm:d.avgHeartRate==null?null:Number(d.avgHeartRate),min_hr_bpm:d.minHeartRate==null?null:Number(d.minHeartRate),max_hr_bpm:d.maxHeartRate==null?null:Number(d.maxHeartRate),hrv_rmssd_ms:d.hrvRmssdMs==null?null:Number(d.hrvRmssdMs),sleep_minutes:d.sleepMinutes==null?null:Number(d.sleepMinutes),deep_sleep_minutes:d.deepSleepMinutes==null?null:Number(d.deepSleepMinutes),rem_sleep_minutes:d.remSleepMinutes==null?null:Number(d.remSleepMinutes),light_sleep_minutes:d.lightSleepMinutes==null?null:Number(d.lightSleepMinutes),awake_minutes:d.awakeMinutes==null?null:Number(d.awakeMinutes),spo2_avg:d.spo2Avg==null?null:Number(d.spo2Avg),respiratory_rate_avg:d.respiratoryRateAvg==null?null:Number(d.respiratoryRateAvg),source_system:d.sourceSystem||'health_connect',synced_at:new Date().toISOString()}}
+  function activityRow(userId,s){const type=String(s.type||'activity').toLowerCase(),duration=Number(s.durationSeconds||0),distance=Number(s.distanceKm||0),pace=s.avgPaceMinPerKm!=null?Number(s.avgPaceMinPerKm):(distance&&duration?(duration/60)/distance:null),speed=s.avgSpeedKmh!=null?Number(s.avgSpeedKmh):(duration?distance/(duration/3600):0);return{user_id:userId,activity_type:type,started_at:s.startTime,ended_at:s.endTime||null,duration_seconds:duration,distance_km:distance,avg_speed_kmh:Number(speed||0),avg_pace_min_per_km:pace,estimated_calories:Number(s.calories||0),estimated_steps:type==='cycle'||s.steps==null?null:Number(s.steps),route_geojson:null,source_system:s.sourceSystem||'health_connect',source_external_id:String(s.externalId||`${s.startTime||''}-${type}`),is_imported:true}}
+  async function sync({days=30}={}){const p=plugin();if(!p){toast('Health Connect sync is available in the Android FitTrack app.');return{ok:false,reason:'native_required'}}const user=await currentUser();if(!user){toast('Sign in to sync health data');return{ok:false,reason:'auth'}}try{const perm=await requestPermissions();if(!perm.available){toast('Health Connect is not available on this device');return{ok:false,reason:'unavailable'}}if(!perm.granted){toast('Health permissions were not granted');return{ok:false,reason:'permission'}}const end=new Date(),start=new Date(end);start.setDate(start.getDate()-Math.max(1,Number(days||30)));if(!p.readSummary)throw new Error('Native health bridge is missing readSummary');const result=await p.readSummary({startTime:start.toISOString(),endTime:end.toISOString()}),daily=(result?.days||[]).filter(x=>x?.date).map(x=>dailyRow(user.id,x)),sessions=(result?.sessions||[]).filter(x=>x?.startTime).map(x=>activityRow(user.id,x));if(daily.length){const{error}=await supabase.from('health_daily').upsert(daily,{onConflict:'user_id,metric_date'});if(error)throw error}if(sessions.length){const{error}=await supabase.from('activity_sessions').upsert(sessions,{onConflict:'user_id,source_system,source_external_id'});if(error)throw error}localStorage.setItem('fittrack:health-last-sync',new Date().toISOString());window.dispatchEvent(new CustomEvent('fittrack:health-synced',{detail:{daily:daily.length,sessions:sessions.length}}));toast(`Health synced · ${daily.length} days · ${sessions.length} activities`);return{ok:true,daily:daily.length,sessions:sessions.length}}catch(err){console.error('FitTrack Health sync failed',err);toast(err?.message?.includes('health_daily')?'Health database setup is required before first sync.':'Could not sync Health Connect');return{ok:false,error:err}}}
   window.fitTrackHealth={available,requestPermissions,sync};
 })();
