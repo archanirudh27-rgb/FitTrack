@@ -1,0 +1,9 @@
+{
+  "appId": "com.fittrack.personal",
+  "appName": "FitTrack",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "android": {
+    "allowMixedContent": false
+  }
+}
