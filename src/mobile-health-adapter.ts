@@ -5,7 +5,7 @@ const READ_TYPES:any[]=[
   'heartRateVariability','sleep','oxygenSaturation','respiratoryRate','workouts'
 ];
 
-const safe=async<T>(fn:()=>Promise<T>,fallback:T):Promise<T=>{
+const safe=async<T>(fn:()=>Promise<T>,fallback:T):Promise<T>=>{
   try{return await fn()}catch(err){console.warn('FitTrack health metric unavailable',err);return fallback}
 };
 
