@@ -1,0 +1,21 @@
+{
+  "name": "fittrack",
+  "version": "1.0.0",
+  "private": true,
+  "description": "FitTrack personalized fitness and wearable health dashboard",
+  "scripts": {
+    "mobile:build": "node scripts/build-mobile.mjs",
+    "mobile:add:android": "npm run mobile:build && npx cap add android",
+    "mobile:sync": "npm run mobile:build && npx cap sync android",
+    "mobile:open": "npx cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/core": "^8.0.0",
+    "@capgo/capacitor-health": "^8.10.4"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.0.0",
+    "esbuild": "^0.25.9"
+  }
+}
