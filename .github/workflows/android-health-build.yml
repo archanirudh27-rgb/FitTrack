@@ -43,6 +43,17 @@ jobs:
       - name: Create Android project
         run: npx cap add android
 
+      - name: Set Android min SDK for Health Connect
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('android/variables.gradle')
+          text=p.read_text()
+          text=text.replace('minSdkVersion = 24','minSdkVersion = 26')
+          p.write_text(text)
+          print(p.read_text())
+          PY
+
       - name: Sync Capacitor plugins
         run: npx cap sync android
 
